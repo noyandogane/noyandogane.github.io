@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Simulation (0-9)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 500px; /* Fixed height */
+            margin: 150px;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden; /* Prevent scrolling */
+        }
+        h1 {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        label {
+            font-weight: bold;
+            font-size: 12px;
+        }
+        input {
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            width: 120px;
+            font-size: 12px;
+        }
+        button {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        canvas {
+            width: 300px;
+            height: 150px;
+        }
+        .percentages {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
+            width: 300px;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+        .percentages div {
+            text-align: center;
+        }
+        .percentages span {
+            font-weight: bold;
+        }
+    </style>
+    <script>
+        let interval;
+        let results = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 };
+        let tossesPerSecond = 10;
+        let totalTosses = 0;
+        let maxTosses = 100;
+
+        function startSimulation() {
+            clearInterval(interval);
+            results = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 };
+            totalTosses = 0;
+            tossesPerSecond = parseInt(document.getElementById("tossCount").value) || 10;
+            maxTosses = parseInt(document.getElementById("maxTosses").value) || 100;
+            updateChart();
+            updatePercentages();
+            interval = setInterval(generateNumber, 1000 / tossesPerSecond);
+        }
+
+        function generateNumber() {
+            if (totalTosses >= maxTosses) {
+                clearInterval(interval);
+                return;
+            }
+            let result = Math.floor(Math.random() * 10); // Random number between 0 and 9
+            results[result]++;
+            totalTosses++;
+            updateChart();
+            updatePercentages();
+        }
+
+        function updateChart() {
+            chart.data.datasets[0].data = Object.values(results);
+            chart.update();
+        }
+
+        function updatePercentages() {
+            for (let i = 0; i <= 9; i++) {
+                const percentage = ((results[i] / totalTosses) * 100 || 0).toFixed(2);
+                document.getElementById(`percentage${i}`).textContent = `${percentage}%`;
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Number Simulation (0-9)</h1>
+    <div class="controls">
+        <label for="tossCount">Numbers per Second:</label>
+        <input id="tossCount" type="number" value="10" min="1" placeholder="Numbers per second">
+        <label for="maxTosses">Total Numbers:</label>
+        <input id="maxTosses" type="number" value="100" min="1" placeholder="Max numbers">
+        <button onclick="startSimulation()">Start</button>
+    </div>
+    <canvas id="numberChart"></canvas>
+    <div class="percentages">
+        <div>0: <span id="percentage0">0%</span></div>
+        <div>1: <span id="percentage1">0%</span></div>
+        <div>2: <span id="percentage2">0%</span></div>
+        <div>3: <span id="percentage3">0%</span></div>
+        <div>4: <span id="percentage4">0%</span></div>
+        <div>5: <span id="percentage5">0%</span></div>
+        <div>6: <span id="percentage6">0%</span></div>
+        <div>7: <span id="percentage7">0%</span></div>
+        <div>8: <span id="percentage8">0%</span></div>
+        <div>9: <span id="percentage9">0%</span></div>
+    </div>
+    <script>
+        const ctx = document.getElementById('numberChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+                datasets: [{
+                    label: 'Number Results',
+                    data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    backgroundColor: [
+                        '#4CAF50', '#FF5733', '#33A1FF', '#FFC300', '#8E44AD',
+                        '#16A085', '#E74C3C', '#2C3E50', '#F39C12', '#7D3C98'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } },
+                plugins: {
+                    legend: { display: false },
+                    title: { display: false }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
