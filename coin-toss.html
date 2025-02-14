@@ -5,6 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Coin Toss Simulation</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 500px; /* Fixed height */
+            margin: 150px;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden; /* Prevent scrolling */
+        }
+        h1 {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        label {
+            font-weight: bold;
+            font-size: 12px;
+        }
+        input {
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            width: 120px;
+            font-size: 12px;
+        }
+        button {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        canvas {
+            width: 200px;
+            height: 100px;
+        }
+    </style>
     <script>
         let interval;
         let results = { Heads: 0, Tails: 0 };
@@ -39,16 +93,16 @@
         }
     </script>
 </head>
-<body class="flex flex-col m-10 items-center justify-center bg-gray-100 p-4">
-    <h1 class="text-2xl font-bold mb-4">Coin Toss Simulation</h1>
-    <div class="mb-4 flex flex-col items-center gap-2">
-        <label for="tossCount" class="font-semibold">Tosses per Second:</label>
-        <input id="tossCount" type="number" value="10" min="1" class="p-2 border rounded" placeholder="Tosses per second">
-        <label for="maxTosses" class="font-semibold">Total Toss Amount:</label>
-        <input id="maxTosses" type="number" value="100" min="1" class="p-2 border rounded" placeholder="Max tosses">
-        <button onclick="startSimulation()" class="px-4 py-2 bg-blue-500 text-white rounded mt-2">Start</button>
+<body>
+    <h1>Coin Toss Simulation</h1>
+    <div class="controls">
+        <label for="tossCount">Tosses per Second:</label>
+        <input id="tossCount" type="number" value="10" min="1" placeholder="Tosses per second">
+        <label for="maxTosses">Total Toss Amount:</label>
+        <input id="maxTosses" type="number" value="100" min="1" placeholder="Max tosses">
+        <button onclick="startSimulation()">Start</button>
     </div>
-    <canvas id="tossChart" width="400" height="200"></canvas>
+    <canvas id="tossChart"></canvas>
     <script>
         const ctx = document.getElementById('tossChart').getContext('2d');
         const chart = new Chart(ctx, {
@@ -63,7 +117,12 @@
             },
             options: {
                 responsive: true,
-                scales: { y: { beginAtZero: true } }
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } },
+                plugins: {
+                    legend: { display: false },
+                    title: { display: false }
+                }
             }
         });
     </script>
