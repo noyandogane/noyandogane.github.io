@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coin Toss Simulation</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let interval;
+        let results = { Heads: 0, Tails: 0 };
+        let tossesPerSecond = 10;
+        let totalTosses = 0;
+        let maxTosses = 100;
+
+        function startSimulation() {
+            clearInterval(interval);
+            results = { Heads: 0, Tails: 0 };
+            totalTosses = 0;
+            tossesPerSecond = parseInt(document.getElementById("tossCount").value) || 10;
+            maxTosses = parseInt(document.getElementById("maxTosses").value) || 100;
+            updateChart();
+            interval = setInterval(tossCoin, 1000 / tossesPerSecond);
+        }
+
+        function tossCoin() {
+            if (totalTosses >= maxTosses) {
+                clearInterval(interval);
+                return;
+            }
+            let result = Math.random() < 0.5 ? 'Heads' : 'Tails';
+            results[result]++;
+            totalTosses++;
+            updateChart();
+        }
+
+        function updateChart() {
+            chart.data.datasets[0].data = [results.Heads, results.Tails];
+            chart.update();
+        }
+    </script>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+    <h1 class="text-2xl font-bold mb-4">Coin Toss Simulation</h1>
+    <div class="mb-4 flex flex-col items-center gap-2">
+        <label for="tossCount" class="font-semibold">Tosses per Second:</label>
+        <input id="tossCount" type="number" value="10" min="1" class="p-2 border rounded" placeholder="Tosses per second">
+        <label for="maxTosses" class="font-semibold">Total Toss Amount:</label>
+        <input id="maxTosses" type="number" value="100" min="1" class="p-2 border rounded" placeholder="Max tosses">
+        <button onclick="startSimulation()" class="px-4 py-2 bg-blue-500 text-white rounded mt-2">Start</button>
+    </div>
+    <canvas id="tossChart" width="400" height="200"></canvas>
+    <script>
+        const ctx = document.getElementById('tossChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Heads', 'Tails'],
+                datasets: [{
+                    label: 'Coin Toss Results',
+                    data: [0, 0],
+                    backgroundColor: ['#4CAF50', '#FF5733']
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    </script>
+</body>
+</html>
