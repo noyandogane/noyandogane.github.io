@@ -58,6 +58,16 @@
             width: 200px;
             height: 100px;
         }
+        .percentages {
+            display: flex;
+            justify-content: space-around;
+            width: 200px;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+        .percentages span {
+            font-weight: bold;
+        }
     </style>
     <script>
         let interval;
@@ -73,6 +83,7 @@
             tossesPerSecond = parseInt(document.getElementById("tossCount").value) || 10;
             maxTosses = parseInt(document.getElementById("maxTosses").value) || 100;
             updateChart();
+            updatePercentages();
             interval = setInterval(tossCoin, 1000 / tossesPerSecond);
         }
 
@@ -85,11 +96,19 @@
             results[result]++;
             totalTosses++;
             updateChart();
+            updatePercentages();
         }
 
         function updateChart() {
             chart.data.datasets[0].data = [results.Heads, results.Tails];
             chart.update();
+        }
+
+        function updatePercentages() {
+            const headsPercentage = ((results.Heads / totalTosses) * 100 || 0).toFixed(2);
+            const tailsPercentage = ((results.Tails / totalTosses) * 100 || 0).toFixed(2);
+            document.getElementById("headsPercentage").textContent = `${headsPercentage}%`;
+            document.getElementById("tailsPercentage").textContent = `${tailsPercentage}%`;
         }
     </script>
 </head>
@@ -103,6 +122,10 @@
         <button onclick="startSimulation()">Start</button>
     </div>
     <canvas id="tossChart"></canvas>
+    <div class="percentages">
+        <div>Heads: <span id="headsPercentage">0%</span></div>
+        <div>Tails: <span id="tailsPercentage">0%</span></div>
+    </div>
     <script>
         const ctx = document.getElementById('tossChart').getContext('2d');
         const chart = new Chart(ctx, {
