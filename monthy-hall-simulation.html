@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monty Hall Problem Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .doors {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .door {
+            width: 100px;
+            height: 150px;
+            background-color: #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            border: 2px solid #000;
+        }
+        .door.open {
+            background-color: #ff5733;
+        }
+        .door.winner {
+            background-color: #4CAF50;
+        }
+        .results {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Monty Hall Problem Simulation</h1>
+    <div class="doors">
+        <div class="door" data-door="1">🚪 1</div>
+        <div class="door" data-door="2">🚪 2</div>
+        <div class="door" data-door="3">🚪 3</div>
+    </div>
+    <div class="results">
+        <p>Wins if you stay: <span id="stayWins">0</span></p>
+        <p>Wins if you switch: <span id="switchWins">0</span></p>
+    </div>
+    <button onclick="runSimulation(1000)">Run 1000 Simulations</button>
+    <button onclick="resetSimulation()">Reset</button>
+    <script>
+        let stayWins = 0;
+        let switchWins = 0;
+
+        function runSimulation(numSimulations) {
+            stayWins = 0;
+            switchWins = 0;
+            for (let i = 0; i < numSimulations; i++) {
+                simulateMontyHall();
+            }
+            updateResults();
+        }
+
+        function simulateMontyHall() {
+            // Randomly place the prize behind one of the doors (1, 2, or 3)
+            const prizeDoor = Math.floor(Math.random() * 3) + 1;
+            const playerChoice = Math.floor(Math.random() * 3) + 1;
+
+            // Host opens a door that is not the prize and not the player's choice
+            let hostOpens;
+            do {
+                hostOpens = Math.floor(Math.random() * 3) + 1;
+            } while (hostOpens === prizeDoor || hostOpens === playerChoice);
+
+            // Determine if switching wins
+            let switchChoice;
+            do {
+                switchChoice = Math.floor(Math.random() * 3) + 1;
+            } while (switchChoice === playerChoice || switchChoice === hostOpens);
+
+            if (playerChoice === prizeDoor) {
+                stayWins++;
+            } else if (switchChoice === prizeDoor) {
+                switchWins++;
+            }
+        }
+
+        function updateResults() {
+            document.getElementById('stayWins').textContent = stayWins;
+            document.getElementById('switchWins').textContent = switchWins;
+        }
+
+        function resetSimulation() {
+            stayWins = 0;
+            switchWins = 0;
+            updateResults();
+        }
+    </script>
+</body>
+</html>
