@@ -135,7 +135,7 @@
         function startWalk() {
             if (walkInterval) clearInterval(walkInterval);
             const speed = 101 - speedSlider.value; // Invert the slider value to get faster speeds with higher values
-            walkInterval = setInterval(randomWalk, speed);
+            walkInterval = setInterval(randomWalk, speed/3);
         }
         
         // Reset the simulation
