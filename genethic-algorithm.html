@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genetic Algorithm Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .population {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .population div {
+            margin: 5px 0;
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Genetic Algorithm Simulation</h1>
+    <div class="population" id="population"></div>
+    <div class="controls">
+        <button onclick="runGeneration()">Run Generation</button>
+        <button onclick="resetSimulation()">Reset</button>
+    </div>
+    <script>
+        const target = "HELLO WORLD"; // Target string to evolve towards
+        const populationSize = 10; // Number of individuals in the population
+        const mutationRate = 0.01; // Probability of mutation per character
+        let population = [];
+
+        // Initialize the population with random strings
+        function initializePopulation() {
+            population = [];
+            for (let i = 0; i < populationSize; i++) {
+                population.push(generateRandomString(target.length));
+            }
+        }
+
+        // Generate a random string of a given length
+        function generateRandomString(length) {
+            let result = "";
+            const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ";
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            return result;
+        }
+
+        // Calculate the fitness of an individual (how close it is to the target)
+        function calculateFitness(individual) {
+            let fitness = 0;
+            for (let i = 0; i < individual.length; i++) {
+                if (individual[i] === target[i]) {
+                    fitness++;
+                }
+            }
+            return fitness;
+        }
+
+        // Select two parents based on fitness
+        function selectParents() {
+            const fitnessScores = population.map(individual => calculateFitness(individual));
+            const totalFitness = fitnessScores.reduce((a, b) => a + b, 0);
+            let parent1, parent2;
+
+            // Select first parent
+            let rand = Math.random() * totalFitness;
+            for (let i = 0; i < population.length; i++) {
+                rand -= fitnessScores[i];
+                if (rand <= 0) {
+                    parent1 = population[i];
+                    break;
+                }
+            }
+
+            // Select second parent
+            rand = Math.random() * totalFitness;
+            for (let i = 0; i < population.length; i++) {
+                rand -= fitnessScores[i];
+                if (rand <= 0) {
+                    parent2 = population[i];
+                    break;
+                }
+            }
+
+            return [parent1, parent2];
+        }
+
+        // Perform crossover between two parents to create a child
+        function crossover(parent1, parent2) {
+            const crossoverPoint = Math.floor(Math.random() * parent1.length);
+            const child = parent1.slice(0, crossoverPoint) + parent2.slice(crossoverPoint);
+            return child;
+        }
+
+        // Mutate a child by randomly changing some characters
+        function mutate(child) {
+            let mutatedChild = "";
+            for (let i = 0; i < child.length; i++) {
+                if (Math.random() < mutationRate) {
+                    mutatedChild += generateRandomString(1);
+                } else {
+                    mutatedChild += child[i];
+                }
+            }
+            return mutatedChild;
+        }
+
+        // Run one generation of the genetic algorithm
+        function runGeneration() {
+            const newPopulation = [];
+            for (let i = 0; i < populationSize; i++) {
+                const [parent1, parent2] = selectParents();
+                let child = crossover(parent1, parent2);
+                child = mutate(child);
+                newPopulation.push(child);
+            }
+            population = newPopulation;
+            displayPopulation();
+        }
+
+        // Display the current population
+        function displayPopulation() {
+            const populationDiv = document.getElementById('population');
+            populationDiv.innerHTML = population
+                .map(individual => `<div>${individual} (Fitness: ${calculateFitness(individual)})</div>`)
+                .join('');
+        }
+
+        // Reset the simulation
+        function resetSimulation() {
+            initializePopulation();
+            displayPopulation();
+        }
+
+        // Initialize the simulation
+        initializePopulation();
+        displayPopulation();
+    </script>
+</body>
+</html>
