@@ -10,6 +10,10 @@
 
 [Random Walk](https://noyandogane.github.io/random-walk.html)
 
+[Mandelbrot](https://noyandogane.github.io/mandelbrot.html)
+
+
+
 
 
 
