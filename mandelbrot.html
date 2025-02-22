@@ -29,6 +29,8 @@
             background-color: black;
             cursor: crosshair;
             box-shadow: 0 0 20px rgba(0,255,255,0.3);
+            width: 1000px; /* Increased width */
+            height: 750px; /* Increased height */
         }
         .controls {
             margin-top: 20px;
@@ -37,56 +39,99 @@
             flex-wrap: wrap;
             justify-content: center;
         }
-        button {
-            padding: 10px 20px;
-            background-color: #00ffff;
-            color: black;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 5px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-        button:hover {
-            background-color: #ff00ff;
-            box-shadow: 0 0 15px rgba(255,0,255,0.5);
-        }
+button {
+    padding: 12px 25px;
+    background-color: #00ffff;
+    color: black;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    margin: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+      button:hover {
+    background-color: #ff00ff;
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.7);
+}
+
+       button.active {
+    background-color: #ff00ff;  /* Set the active color */
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.7); /* Add glow effect */
+    transform: scale(0.98);  /* Optional, to add the scale effect */
+}
+
         label {
             color: white;
-            font-size: 14px;
-            margin: 5px;
+            font-size: 16px;
+            margin: 5px 0;
+            display: flex; /* Using flexbox */
+            align-items: center; /* Vertically center */
+            justify-content: center; /* Horizontally center */
+            font-weight: bold;
+            text-transform: uppercase;
         }
+
         input[type="range"] {
-            width: 200px;
+            width: 220px;
+            margin: 10px 0;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        input[type="range"]:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.6);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            background-color: #ff00ff;
+            border-radius: 50%;
+            border: 2px solid white;
+            height: 16px;
+            width: 16px;
+            cursor: pointer;
+        }
+
+        input[type="range"]:hover {
+            background-color: #00cccc;
         }
     </style>
 </head>
 <body>
     <h1>Mandelbrot Explorer</h1>
-    <canvas id="fractalCanvas" width="800" height="600"></canvas>
+    <canvas id="fractalCanvas" width="1000" height="750"></canvas> <!-- Increased width and height -->
     <div class="controls">
         <button onclick="resetFractal()">Reset</button>
         <button onclick="saveImage()">Save Image</button>
         <button onclick="zoomToLocation(-0.743643887037151, 0.13182590420533, 200)">Seahorse Valley</button>
-        <button onclick="zoomToLocation(-0.75, 0.1, 1000)">Elephant Valley</button>
+        
+
         <label for="hueOffset">Color Mix:</label>
         <input type="range" id="hueOffset" min="0" max="10" step="0.01" value="0" oninput="updateColorOffset(this.value)">
-        <button onclick="toggleAutoHueLoop()">Auto Hue Loop</button>
+
+        <button id="autoHueButton" onclick="toggleAutoHueLoop()">Auto Hue Loop</button>
+
+        <label for="hueLoopSpeed">Color Loop Speed:</label>
+        <input type="range" id="hueLoopSpeed" max="49" step="1" min="0" value="0" oninput="updateHueLoopTime(this.value)">
     </div>
     <script>
-        let gl, program, zoomLocation, offsetLocation, maxIterationsLocation, colorOffsetLocation;
-        let zoom = 1.0;
-        let offsetX = -0.5;
-        let offsetY = 0.0;
-        let maxIterations = 1000;
-        let colorOffset = 0.0;
-        let zoomCount = 0;
-        let isDragging = false;
-        let autoHueLoop = false;
-        let lastMouseX, lastMouseY;
-
+		let gl, program, zoomLocation, offsetLocation, maxIterationsLocation, colorOffsetLocation;
+		let zoom = 1.0;
+		let offsetX = -0.5;
+		let offsetY = 0.0;
+		let maxIterations = 1000;
+		let colorOffset = 0.0; // Keep only one declaration for colorOffset
+		let zoomCount = 0;
+		let isDragging = false;
+		let autoHueLoop = false; // Keep only one declaration for autoHueLoop
+		let lastMouseX, lastMouseY;
+		let hueLoopInterval;
+		let hueLoopTime = 50;
         function initWebGL() {
             const canvas = document.getElementById('fractalCanvas');
             gl = canvas.getContext('webgl', { 
@@ -188,6 +233,10 @@
             maxIterationsLocation = gl.getUniformLocation(program, 'u_maxIterations');
             colorOffsetLocation = gl.getUniformLocation(program, 'u_colorOffset');
 
+    		         // Center the Mandelbrot set on the canvas
+    		offsetX = -1;  // Set initial offset to center it on the canvas
+    		offsetY = -0.25;   // Set initial offset to center it on the canvas
+
             return true;
         }
 
@@ -217,8 +266,8 @@
 
         function resetFractal() {
             zoom = 1.0;
-            offsetX = -0.5;
-            offsetY = 0.0;
+            offsetX = -1;
+            offsetY = -0.25;
             maxIterations = 1000;
             colorOffset = 0.0;
             document.getElementById('hueOffset').value = 0;
@@ -241,23 +290,40 @@
             render();
         }
 
-        function updateColorOffset(value) {
-            colorOffset = parseFloat(value);
-            render();
-        }
-                function toggleAutoHueLoop() {
-            autoHueLoop = !autoHueLoop;
+function updateColorOffset(value) {
+    colorOffset = parseFloat(value);
+    render();
+}
 
-            if (autoHueLoop) {
-                hueLoopInterval = setInterval(() => {
-                    colorOffset += 0.01;
-                    if (colorOffset >= 10) colorOffset = 0;
-                    updateColorOffset(colorOffset);
-                }, 50); // Update every 50ms
-            } else {
-                clearInterval(hueLoopInterval);
-            }
-        }
+function toggleAutoHueLoop() {
+    autoHueLoop = !autoHueLoop;
+    const autoHueButton = document.getElementById('autoHueButton');
+    
+    if (autoHueLoop) {
+        autoHueButton.classList.add('active');
+        hueLoopInterval = setInterval(() => {
+            colorOffset += 0.01;
+            if (colorOffset >= 10) colorOffset = 0;
+            updateColorOffset(colorOffset);
+        }, hueLoopTime); // Update every hueLoopTime ms
+    } else {
+        autoHueButton.classList.remove('active');
+        clearInterval(hueLoopInterval); // Clear the interval when the loop is off
+    }
+}
+
+
+function updateHueLoopTime(value) {
+    hueLoopTime = 50 - value;
+    if (autoHueLoop) {
+        clearInterval(hueLoopInterval); // Clear the current interval
+        hueLoopInterval = setInterval(() => {
+            colorOffset += 0.01;
+            if (colorOffset >= 10) colorOffset = 0;
+            updateColorOffset(colorOffset);
+        }, hueLoopTime); // Set the new interval without stopping the loop
+    }
+}
 
         if (initWebGL()) {
             const canvas = document.getElementById('fractalCanvas');
