@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blade and Soul Neo Countdown</title>
+    <title>Blade and Soul Neo Geri Sayım</title>
     <style>
         body {
             margin: 0;
@@ -102,26 +102,26 @@
         <div class="countdown">
             <div class="time-box">
                 <div class="number" id="days">00</div>
-                <div class="label">Days</div>
+                <div class="label">Gün</div>
             </div>
             <div class="time-box">
                 <div class="number" id="hours">00</div>
-                <div class="label">Hours</div>
+                <div class="label">Saat</div>
             </div>
             <div class="time-box">
                 <div class="number" id="minutes">00</div>
-                <div class="label">Minutes</div>
+                <div class="label">Dakika</div>
             </div>
             <div class="time-box">
                 <div class="number" id="seconds">00</div>
-                <div class="label">Seconds</div>
+                <div class="label">Saniye</div>
             </div>
         </div>
-        <div class="release-date">Release Date: February 25, 2025 20:00 UTC+9</div>
+        <div class="release-date">Çıkış Tarihi: 25 Şubat 2025 20:00 GMT+3</div>
     </div>
 
     <script>
-        const releaseDate = new Date('2025-02-25T20:00:00+09:00'); // UTC+9
+        const releaseDate = new Date('2025-02-25T20:00:00+03:00'); // GMT+3
 
         function updateCountdown() {
             const now = new Date().getTime();
@@ -147,9 +147,9 @@
             document.getElementById('seconds').innerHTML = seconds.toString().padStart(2, '0');
         }
 
-        // Initial call
+        // İlk çağrı
         updateCountdown();
-        // Update every second
+        // Saniyede bir güncelle
         const countdownInterval = setInterval(updateCountdown, 1000);
     </script>
 </body>
