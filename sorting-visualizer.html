@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorting Algorithm Visualizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 1px solid #000;
+            background-color: #fff;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        select {
+            padding: 6px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        input[type="range"] {
+            width: 100px;
+        }
+        .value-display {
+            font-size: 12px;
+            min-width: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sorting Algorithm Visualizer</h1>
+    <canvas id="sortCanvas" width="800" height="400"></canvas>
+    <div class="controls">
+        <button id="startBtn">Sort</button>
+        <button id="resetBtn">Reset</button>
+        <select id="algorithmSelect">
+            <option value="bubble">Bubble Sort</option>
+            <option value="insertion">Insertion Sort</option>
+            <option value="selection">Selection Sort</option>
+            <option value="quick">Quick Sort</option>
+        </select>
+        <div class="slider-container">
+            <label>Size:</label>
+            <input type="range" id="sizeSlider" min="10" max="100" value="50" step="1">
+            <span class="value-display" id="sizeValue">50</span>
+        </div>
+        <div class="slider-container">
+            <label>Speed:</label>
+            <input type="range" id="speedSlider" min="1" max="100" value="50" step="1">
+            <span class="value-display" id="speedValue">50</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('sortCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const algorithmSelect = document.getElementById('algorithmSelect');
+        const sizeSlider = document.getElementById('sizeSlider');
+        const sizeValue = document.getElementById('sizeValue');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+
+        let array = [];
+        let sorting = false;
+        let arraySize = 50;
+        let speed = 50;
+        let comparingIndices = [];
+        let swappingIndices = [];
+
+        sizeSlider.addEventListener('input', (e) => {
+            arraySize = parseInt(e.target.value);
+            sizeValue.textContent = arraySize;
+            if (!sorting) generateArray();
+        });
+
+        speedSlider.addEventListener('input', (e) => {
+            speed = parseInt(e.target.value);
+            speedValue.textContent = speed;
+        });
+
+        startBtn.addEventListener('click', async () => {
+            if (sorting) return;
+            sorting = true;
+            startBtn.disabled = true;
+            sizeSlider.disabled = true;
+            
+            const algorithm = algorithmSelect.value;
+            switch(algorithm) {
+                case 'bubble': await bubbleSort(); break;
+                case 'insertion': await insertionSort(); break;
+                case 'selection': await selectionSort(); break;
+                case 'quick': await quickSort(0, array.length - 1); break;
+            }
+            
+            sorting = false;
+            startBtn.disabled = false;
+            sizeSlider.disabled = false;
+            comparingIndices = [];
+            swappingIndices = [];
+            draw();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            if (!sorting) generateArray();
+        });
+
+        function generateArray() {
+            array = [];
+            for (let i = 0; i < arraySize; i++) {
+                array.push(Math.random() * (canvas.height - 50) + 10);
+            }
+            comparingIndices = [];
+            swappingIndices = [];
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const barWidth = canvas.width / arraySize;
+            
+            for (let i = 0; i < array.length; i++) {
+                if (swappingIndices.includes(i)) {
+                    ctx.fillStyle = '#dc3545';
+                } else if (comparingIndices.includes(i)) {
+                    ctx.fillStyle = '#ffc107';
+                } else {
+                    ctx.fillStyle = '#007bff';
+                }
+                
+                ctx.fillRect(i * barWidth, canvas.height - array[i], barWidth - 2, array[i]);
+            }
+        }
+
+        function sleep() {
+            return new Promise(resolve => setTimeout(resolve, 101 - speed));
+        }
+
+        async function bubbleSort() {
+            for (let i = 0; i < array.length - 1; i++) {
+                for (let j = 0; j < array.length - i - 1; j++) {
+                    comparingIndices = [j, j + 1];
+                    draw();
+                    await sleep();
+                    
+                    if (array[j] > array[j + 1]) {
+                        swappingIndices = [j, j + 1];
+                        [array[j], array[j + 1]] = [array[j + 1], array[j]];
+                        draw();
+                        await sleep();
+                        swappingIndices = [];
+                    }
+                }
+            }
+            comparingIndices = [];
+        }
+
+        async function insertionSort() {
+            for (let i = 1; i < array.length; i++) {
+                let key = array[i];
+                let j = i - 1;
+                
+                comparingIndices = [i];
+                draw();
+                await sleep();
+                
+                while (j >= 0 && array[j] > key) {
+                    comparingIndices = [j, j + 1];
+                    swappingIndices = [j, j + 1];
+                    array[j + 1] = array[j];
+                    draw();
+                    await sleep();
+                    swappingIndices = [];
+                    j--;
+                }
+                array[j + 1] = key;
+            }
+            comparingIndices = [];
+        }
+
+        async function selectionSort() {
+            for (let i = 0; i < array.length - 1; i++) {
+                let minIdx = i;
+                
+                for (let j = i + 1; j < array.length; j++) {
+                    comparingIndices = [minIdx, j];
+                    draw();
+                    await sleep();
+                    
+                    if (array[j] < array[minIdx]) {
+                        minIdx = j;
+                    }
+                }
+                
+                if (minIdx !== i) {
+                    swappingIndices = [i, minIdx];
+                    [array[i], array[minIdx]] = [array[minIdx], array[i]];
+                    draw();
+                    await sleep();
+                    swappingIndices = [];
+                }
+            }
+            comparingIndices = [];
+        }
+
+        async function quickSort(low, high) {
+            if (low < high) {
+                const pi = await partition(low, high);
+                await quickSort(low, pi - 1);
+                await quickSort(pi + 1, high);
+            }
+        }
+
+        async function partition(low, high) {
+            const pivot = array[high];
+            let i = low - 1;
+            
+            for (let j = low; j < high; j++) {
+                comparingIndices = [j, high];
+                draw();
+                await sleep();
+                
+                if (array[j] < pivot) {
+                    i++;
+                    swappingIndices = [i, j];
+                    [array[i], array[j]] = [array[j], array[i]];
+                    draw();
+                    await sleep();
+                    swappingIndices = [];
+                }
+            }
+            
+            swappingIndices = [i + 1, high];
+            [array[i + 1], array[high]] = [array[high], array[i + 1]];
+            draw();
+            await sleep();
+            swappingIndices = [];
+            
+            return i + 1;
+        }
+
+        generateArray();
+    </script>
+</body>
+</html>

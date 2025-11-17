@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Intersection Simulator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 1px solid #000;
+            background-color: #fff;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100px;
+        }
+        .value-display {
+            font-size: 12px;
+            min-width: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Traffic Intersection Simulator</h1>
+    <canvas id="trafficCanvas" width="700" height="700"></canvas>
+    <div class="controls">
+        <button id="startBtn">Start</button>
+        <button id="resetBtn">Reset</button>
+        <div class="slider-container">
+            <label>Green Time (NS):</label>
+            <input type="range" id="nsGreenSlider" min="20" max="200" value="100">
+            <span class="value-display" id="nsGreenValue">100</span>
+        </div>
+        <div class="slider-container">
+            <label>Green Time (EW):</label>
+            <input type="range" id="ewGreenSlider" min="20" max="200" value="100">
+            <span class="value-display" id="ewGreenValue">100</span>
+        </div>
+        <div class="slider-container">
+            <label>Car Spawn Rate:</label>
+            <input type="range" id="spawnSlider" min="1" max="10" value="3">
+            <span class="value-display" id="spawnValue">3</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('trafficCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const nsGreenSlider = document.getElementById('nsGreenSlider');
+        const nsGreenValue = document.getElementById('nsGreenValue');
+        const ewGreenSlider = document.getElementById('ewGreenSlider');
+        const ewGreenValue = document.getElementById('ewGreenValue');
+        const spawnSlider = document.getElementById('spawnSlider');
+        const spawnValue = document.getElementById('spawnValue');
+
+        let running = false;
+        let nsGreenTime = 100;
+        let ewGreenTime = 100;
+        let spawnRate = 3;
+        let lightTimer = 0;
+        let lightState = 'ns';
+        let cars = [];
+        let frameCount = 0;
+
+        const laneWidth = 40;
+        const center = canvas.width / 2;
+
+        class Car {
+            constructor(direction) {
+                this.direction = direction;
+                this.width = 30;
+                this.height = 20;
+                this.speed = 2;
+                
+                switch(direction) {
+                    case 'north':
+                        this.x = center + laneWidth / 2 - this.width / 2;
+                        this.y = canvas.height;
+                        break;
+                    case 'south':
+                        this.x = center - laneWidth / 2 - this.width / 2;
+                        this.y = -this.height;
+                        break;
+                    case 'east':
+                        this.x = -this.width;
+                        this.y = center - laneWidth / 2 - this.height / 2;
+                        break;
+                    case 'west':
+                        this.x = canvas.width;
+                        this.y = center + laneWidth / 2 - this.height / 2;
+                        break;
+                }
+            }
+
+            update() {
+                const stopDistance = 50;
+                
+                switch(this.direction) {
+                    case 'north':
+                        if (lightState !== 'ns' && this.y > center + stopDistance) {
+                            this.y -= this.speed;
+                        } else if (lightState === 'ns' || this.y <= center + stopDistance) {
+                            this.y -= this.speed;
+                        }
+                        break;
+                    case 'south':
+                        if (lightState !== 'ns' && this.y + this.height < center - stopDistance) {
+                            this.y += this.speed;
+                        } else if (lightState === 'ns' || this.y + this.height >= center - stopDistance) {
+                            this.y += this.speed;
+                        }
+                        break;
+                    case 'east':
+                        if (lightState !== 'ew' && this.x < center - stopDistance) {
+                            this.x += this.speed;
+                        } else if (lightState === 'ew' || this.x >= center - stopDistance) {
+                            this.x += this.speed;
+                        }
+                        break;
+                    case 'west':
+                        if (lightState !== 'ew' && this.x + this.width > center + stopDistance) {
+                            this.x -= this.speed;
+                        } else if (lightState === 'ew' || this.x + this.width <= center + stopDistance) {
+                            this.x -= this.speed;
+                        }
+                        break;
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = '#007bff';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x, this.y, this.width, this.height);
+            }
+
+            isOffScreen() {
+                return this.x > canvas.width + 50 || this.x < -50 || 
+                       this.y > canvas.height + 50 || this.y < -50;
+            }
+        }
+
+        function drawRoads() {
+            ctx.fillStyle = '#555';
+            ctx.fillRect(center - laneWidth, 0, laneWidth * 2, canvas.height);
+            ctx.fillRect(0, center - laneWidth, canvas.width, laneWidth * 2);
+            
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.moveTo(center, 0);
+            ctx.lineTo(center, canvas.height);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, center);
+            ctx.lineTo(canvas.width, center);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawTrafficLights() {
+            const lightSize = 20;
+            const lightOffset = laneWidth * 1.5;
+            
+            const lights = [
+                { x: center - lightOffset, y: center - lightOffset, dir: 'ns' },
+                { x: center + lightOffset, y: center - lightOffset, dir: 'ns' },
+                { x: center - lightOffset, y: center + lightOffset, dir: 'ns' },
+                { x: center + lightOffset, y: center + lightOffset, dir: 'ns' },
+                { x: center - lightOffset, y: center - lightOffset, dir: 'ew' },
+                { x: center + lightOffset, y: center - lightOffset, dir: 'ew' },
+                { x: center - lightOffset, y: center + lightOffset, dir: 'ew' },
+                { x: center + lightOffset, y: center + lightOffset, dir: 'ew' }
+            ];
+
+            lights.forEach(light => {
+                ctx.fillStyle = '#222';
+                ctx.fillRect(light.x - lightSize / 2, light.y - lightSize / 2, lightSize, lightSize);
+                
+                if (light.dir === lightState) {
+                    ctx.fillStyle = '#0f0';
+                } else {
+                    ctx.fillStyle = '#f00';
+                }
+                ctx.beginPath();
+                ctx.arc(light.x, light.y, lightSize / 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function spawnCar() {
+            const directions = ['north', 'south', 'east', 'west'];
+            const direction = directions[Math.floor(Math.random() * directions.length)];
+            cars.push(new Car(direction));
+        }
+
+        function update() {
+            lightTimer++;
+            
+            if (lightState === 'ns' && lightTimer > nsGreenTime) {
+                lightState = 'ew';
+                lightTimer = 0;
+            } else if (lightState === 'ew' && lightTimer > ewGreenTime) {
+                lightState = 'ns';
+                lightTimer = 0;
+            }
+
+            cars.forEach(car => car.update());
+            cars = cars.filter(car => !car.isOffScreen());
+
+            if (frameCount % Math.floor(60 / spawnRate) === 0) {
+                spawnCar();
+            }
+            frameCount++;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawRoads();
+            drawTrafficLights();
+            cars.forEach(car => car.draw());
+        }
+
+        function animate() {
+            if (!running) return;
+            update();
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        nsGreenSlider.addEventListener('input', (e) => {
+            nsGreenTime = parseInt(e.target.value);
+            nsGreenValue.textContent = nsGreenTime;
+        });
+
+        ewGreenSlider.addEventListener('input', (e) => {
+            ewGreenTime = parseInt(e.target.value);
+            ewGreenValue.textContent = ewGreenTime;
+        });
+
+        spawnSlider.addEventListener('input', (e) => {
+            spawnRate = parseInt(e.target.value);
+            spawnValue.textContent = spawnRate;
+        });
+
+        startBtn.addEventListener('click', () => {
+            running = !running;
+            startBtn.textContent = running ? 'Pause' : 'Start';
+            if (running) animate();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            cars = [];
+            lightTimer = 0;
+            lightState = 'ns';
+            frameCount = 0;
+            draw();
+        });
+
+        draw();
+    </script>
+</body>
+</html>

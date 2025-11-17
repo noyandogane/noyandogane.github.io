@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractal Tree Builder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 1px solid #000;
+            background: linear-gradient(to bottom, #87ceeb, #f0e68c);
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        select {
+            padding: 6px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100px;
+        }
+        .value-display {
+            font-size: 12px;
+            min-width: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Fractal Tree Builder</h1>
+    <canvas id="treeCanvas" width="800" height="600"></canvas>
+    <div class="controls">
+        <button id="generateBtn">Generate</button>
+        <select id="seasonSelect">
+            <option value="spring">Spring</option>
+            <option value="summer">Summer</option>
+            <option value="autumn">Autumn</option>
+            <option value="winter">Winter</option>
+        </select>
+        <div class="slider-container">
+            <label>Depth:</label>
+            <input type="range" id="depthSlider" min="5" max="12" value="9">
+            <span class="value-display" id="depthValue">9</span>
+        </div>
+        <div class="slider-container">
+            <label>Angle:</label>
+            <input type="range" id="angleSlider" min="10" max="60" value="25">
+            <span class="value-display" id="angleValue">25°</span>
+        </div>
+        <div class="slider-container">
+            <label>Length Ratio:</label>
+            <input type="range" id="ratioSlider" min="50" max="80" value="67">
+            <span class="value-display" id="ratioValue">0.67</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('treeCanvas');
+        const ctx = canvas.getContext('2d');
+        const generateBtn = document.getElementById('generateBtn');
+        const seasonSelect = document.getElementById('seasonSelect');
+        const depthSlider = document.getElementById('depthSlider');
+        const depthValue = document.getElementById('depthValue');
+        const angleSlider = document.getElementById('angleSlider');
+        const angleValue = document.getElementById('angleValue');
+        const ratioSlider = document.getElementById('ratioSlider');
+        const ratioValue = document.getElementById('ratioValue');
+
+        let depth = 9;
+        let angle = 25;
+        let lengthRatio = 0.67;
+        let season = 'spring';
+
+        const seasons = {
+            spring: {
+                leaves: ['#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff'],
+                trunk: '#8B4513'
+            },
+            summer: {
+                leaves: ['#228B22', '#32CD32', '#3CB371', '#2E8B57', '#90EE90'],
+                trunk: '#654321'
+            },
+            autumn: {
+                leaves: ['#ff4500', '#ff6347', '#ffa500', '#ffd700', '#ff8c00'],
+                trunk: '#8B4513'
+            },
+            winter: {
+                leaves: ['#ffffff', '#f0f0f0', '#e8e8e8'],
+                trunk: '#4a4a4a'
+            }
+        };
+
+        function drawBranch(x, y, length, angle, depth, branchAngle) {
+            if (depth === 0) return;
+
+            const endX = x + length * Math.cos(angle);
+            const endY = y - length * Math.sin(angle);
+
+            const lineWidth = Math.max(1, depth * 1.5);
+            ctx.lineWidth = lineWidth;
+            ctx.strokeStyle = seasons[season].trunk;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            if (depth <= 3) {
+                const leafColors = seasons[season].leaves;
+                const leafColor = leafColors[Math.floor(Math.random() * leafColors.length)];
+                ctx.fillStyle = leafColor;
+                ctx.beginPath();
+                ctx.arc(endX, endY, depth * 2 + Math.random() * 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            const angleVariation = (Math.random() - 0.5) * 0.2;
+            drawBranch(endX, endY, length * lengthRatio, angle - branchAngle + angleVariation, depth - 1, branchAngle);
+            drawBranch(endX, endY, length * lengthRatio, angle + branchAngle + angleVariation, depth - 1, branchAngle);
+        }
+
+        function drawTree() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87ceeb');
+            gradient.addColorStop(1, '#f0e68c');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const startX = canvas.width / 2;
+            const startY = canvas.height;
+            const startLength = 120;
+            const startAngle = Math.PI / 2;
+            const branchAngle = (angle * Math.PI) / 180;
+
+            drawBranch(startX, startY, startLength, startAngle, depth, branchAngle);
+        }
+
+        depthSlider.addEventListener('input', (e) => {
+            depth = parseInt(e.target.value);
+            depthValue.textContent = depth;
+        });
+
+        angleSlider.addEventListener('input', (e) => {
+            angle = parseInt(e.target.value);
+            angleValue.textContent = angle + '°';
+        });
+
+        ratioSlider.addEventListener('input', (e) => {
+            lengthRatio = parseInt(e.target.value) / 100;
+            ratioValue.textContent = lengthRatio.toFixed(2);
+        });
+
+        seasonSelect.addEventListener('change', (e) => {
+            season = e.target.value;
+            drawTree();
+        });
+
+        generateBtn.addEventListener('click', () => {
+            drawTree();
+        });
+
+        drawTree();
+    </script>
+</body>
+</html>

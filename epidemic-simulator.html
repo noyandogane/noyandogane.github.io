@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epidemic Spread Simulator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 1px solid #000;
+            background-color: #fff;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100px;
+        }
+        .value-display {
+            font-size: 12px;
+            min-width: 40px;
+        }
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .legend div {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend span {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Epidemic Spread Simulator</h1>
+    <canvas id="epidemicCanvas" width="700" height="500"></canvas>
+    <div class="controls">
+        <button id="startBtn">Start</button>
+        <button id="resetBtn">Reset</button>
+        <div class="slider-container">
+            <label>Population:</label>
+            <input type="range" id="populationSlider" min="50" max="500" value="200">
+            <span class="value-display" id="populationValue">200</span>
+        </div>
+        <div class="slider-container">
+            <label>Infection Rate:</label>
+            <input type="range" id="infectionSlider" min="0" max="100" value="40">
+            <span class="value-display" id="infectionValue">0.40</span>
+        </div>
+        <div class="slider-container">
+            <label>Recovery Time:</label>
+            <input type="range" id="recoverySlider" min="50" max="500" value="200">
+            <span class="value-display" id="recoveryValue">200</span>
+        </div>
+        <div class="slider-container">
+            <label>Distance:</label>
+            <input type="range" id="distanceSlider" min="0" max="100" value="20">
+            <span class="value-display" id="distanceValue">20</span>
+        </div>
+    </div>
+    <div class="legend">
+        <div><span style="background-color: #007bff"></span> Susceptible</div>
+        <div><span style="background-color: #ffc107"></span> Infected</div>
+        <div><span style="background-color: #28a745"></span> Recovered</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('epidemicCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const populationSlider = document.getElementById('populationSlider');
+        const populationValue = document.getElementById('populationValue');
+        const infectionSlider = document.getElementById('infectionSlider');
+        const infectionValue = document.getElementById('infectionValue');
+        const recoverySlider = document.getElementById('recoverySlider');
+        const recoveryValue = document.getElementById('recoveryValue');
+        const distanceSlider = document.getElementById('distanceSlider');
+        const distanceValue = document.getElementById('distanceValue');
+
+        let agents = [];
+        let running = false;
+        let population = 200;
+        let infectionRate = 0.4;
+        let recoveryTime = 200;
+        let socialDistance = 20;
+
+        class Agent {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.radius = 4;
+                this.status = 'susceptible';
+                this.infectionTimer = 0;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < this.radius || this.x > canvas.width - this.radius) {
+                    this.vx *= -1;
+                }
+                if (this.y < this.radius || this.y > canvas.height - this.radius) {
+                    this.vy *= -1;
+                }
+
+                if (this.status === 'infected') {
+                    this.infectionTimer++;
+                    if (this.infectionTimer > recoveryTime) {
+                        this.status = 'recovered';
+                    }
+                }
+            }
+
+            draw() {
+                if (this.status === 'susceptible') {
+                    ctx.fillStyle = '#007bff';
+                } else if (this.status === 'infected') {
+                    ctx.fillStyle = '#ffc107';
+                } else {
+                    ctx.fillStyle = '#28a745';
+                }
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function generateAgents() {
+            agents = [];
+            for (let i = 0; i < population; i++) {
+                agents.push(new Agent());
+            }
+            agents[Math.floor(Math.random() * agents.length)].status = 'infected';
+        }
+
+        function update() {
+            for (let agent of agents) {
+                if (socialDistance > 0) {
+                    agents.forEach(other => {
+                        if (other !== agent) {
+                            const dx = agent.x - other.x;
+                            const dy = agent.y - other.y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            if (distance < socialDistance && distance > 0) {
+                                agent.vx += dx / distance * 0.02;
+                                agent.vy += dy / distance * 0.02;
+                            }
+                        }
+                    });
+                }
+                agent.update();
+            }
+
+            for (let i = 0; i < agents.length; i++) {
+                for (let j = i + 1; j < agents.length; j++) {
+                    const a = agents[i];
+                    const b = agents[j];
+                    const dx = a.x - b.x;
+                    const dy = a.y - b.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < a.radius + b.radius) {
+                        const nx = dx / distance;
+                        const ny = dy / distance;
+                        const p = 2 * (a.vx * nx + a.vy * ny - b.vx * nx - b.vy * ny) / 2;
+
+                        a.vx -= p * nx;
+                        a.vy -= p * ny;
+                        b.vx += p * nx;
+                        b.vy += p * ny;
+
+                        if ((a.status === 'infected' && b.status === 'susceptible') || (b.status === 'infected' && a.status === 'susceptible')) {
+                            if (Math.random() < infectionRate) {
+                                if (a.status === 'susceptible') a.status = 'infected';
+                                if (b.status === 'susceptible') b.status = 'infected';
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            agents.forEach(agent => agent.draw());
+        }
+
+        function animate() {
+            if (!running) return;
+            update();
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        function updateValues() {
+            populationValue.textContent = population;
+            infectionValue.textContent = infectionRate.toFixed(2);
+            recoveryValue.textContent = recoveryTime;
+            distanceValue.textContent = socialDistance;
+        }
+
+        populationSlider.addEventListener('input', (e) => {
+            population = parseInt(e.target.value);
+            populationValue.textContent = population;
+            if (!running) generateAgents();
+        });
+
+        infectionSlider.addEventListener('input', (e) => {
+            infectionRate = parseInt(e.target.value) / 100;
+            infectionValue.textContent = infectionRate.toFixed(2);
+        });
+
+        recoverySlider.addEventListener('input', (e) => {
+            recoveryTime = parseInt(e.target.value);
+            recoveryValue.textContent = recoveryTime;
+        });
+
+        distanceSlider.addEventListener('input', (e) => {
+            socialDistance = parseInt(e.target.value);
+            distanceValue.textContent = socialDistance;
+        });
+
+        startBtn.addEventListener('click', () => {
+            running = !running;
+            startBtn.textContent = running ? 'Pause' : 'Start';
+            if (running) animate();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            running = false;
+            startBtn.textContent = 'Start';
+            generateAgents();
+            draw();
+        });
+
+        generateAgents();
+        updateValues();
+        draw();
+    </script>
+</body>
+</html>

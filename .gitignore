@@ -1,0 +1,11 @@
+# General OS files
+.DS_Store
+Thumbs.db
+
+# Node/npm artifacts (if ever used locally)
+node_modules/
+.npm-cache/
+
+# IDE configuration
+.vscode/
+.idea/
