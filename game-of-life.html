@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 1px solid #000;
+            background-color: #fff;
+            cursor: crosshair;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        select {
+            padding: 6px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100px;
+        }
+        .value-display {
+            font-size: 12px;
+            min-width: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Conway's Game of Life</h1>
+    <canvas id="lifeCanvas" width="600" height="600"></canvas>
+    <div class="controls">
+        <button id="startBtn">Start</button>
+        <button id="stepBtn">Step</button>
+        <button id="clearBtn">Clear</button>
+        <button id="randomBtn">Random</button>
+        <select id="patternSelect">
+            <option value="">Load Pattern...</option>
+            <option value="glider">Glider</option>
+            <option value="blinker">Blinker</option>
+            <option value="toad">Toad</option>
+            <option value="beacon">Beacon</option>
+            <option value="pulsar">Pulsar</option>
+            <option value="gosperGun">Gosper Glider Gun</option>
+        </select>
+        <div class="slider-container">
+            <label>Speed:</label>
+            <input type="range" id="speedSlider" min="1" max="100" value="50">
+            <span class="value-display" id="speedValue">50</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('lifeCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const stepBtn = document.getElementById('stepBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const randomBtn = document.getElementById('randomBtn');
+        const patternSelect = document.getElementById('patternSelect');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+
+        const cellSize = 10;
+        const rows = Math.floor(canvas.height / cellSize);
+        const cols = Math.floor(canvas.width / cellSize);
+        
+        let grid = [];
+        let running = false;
+        let speed = 50;
+        let lastUpdate = 0;
+        let mouseDown = false;
+
+        const patterns = {
+            glider: [[1,0],[2,1],[0,2],[1,2],[2,2]],
+            blinker: [[1,0],[1,1],[1,2]],
+            toad: [[1,1],[2,1],[3,1],[0,2],[1,2],[2,2]],
+            beacon: [[0,0],[1,0],[0,1],[3,2],[2,3],[3,3]],
+            pulsar: [[2,0],[3,0],[4,0],[8,0],[9,0],[10,0],[0,2],[5,2],[7,2],[12,2],[0,3],[5,3],[7,3],[12,3],[0,4],[5,4],[7,4],[12,4],[2,5],[3,5],[4,5],[8,5],[9,5],[10,5],[2,7],[3,7],[4,7],[8,7],[9,7],[10,7],[0,8],[5,8],[7,8],[12,8],[0,9],[5,9],[7,9],[12,9],[0,10],[5,10],[7,10],[12,10],[2,12],[3,12],[4,12],[8,12],[9,12],[10,12]],
+            gosperGun: [[0,4],[0,5],[1,4],[1,5],[10,4],[10,5],[10,6],[11,3],[11,7],[12,2],[12,8],[13,2],[13,8],[14,5],[15,3],[15,7],[16,4],[16,5],[16,6],[17,5],[20,2],[20,3],[20,4],[21,2],[21,3],[21,4],[22,1],[22,5],[24,0],[24,1],[24,5],[24,6],[34,2],[34,3],[35,2],[35,3]]
+        };
+
+        function initGrid() {
+            grid = Array(rows).fill(null).map(() => Array(cols).fill(0));
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    if (grid[i][j] === 1) {
+                        ctx.fillStyle = '#007bff';
+                        ctx.fillRect(j * cellSize, i * cellSize, cellSize - 1, cellSize - 1);
+                    }
+                }
+            }
+            
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= rows; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, i * cellSize);
+                ctx.lineTo(canvas.width, i * cellSize);
+                ctx.stroke();
+            }
+            for (let j = 0; j <= cols; j++) {
+                ctx.beginPath();
+                ctx.moveTo(j * cellSize, 0);
+                ctx.lineTo(j * cellSize, canvas.height);
+                ctx.stroke();
+            }
+        }
+
+        function countNeighbors(row, col) {
+            let count = 0;
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) continue;
+                    const newRow = (row + i + rows) % rows;
+                    const newCol = (col + j + cols) % cols;
+                    count += grid[newRow][newCol];
+                }
+            }
+            return count;
+        }
+
+        function update() {
+            const newGrid = Array(rows).fill(null).map(() => Array(cols).fill(0));
+            
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const neighbors = countNeighbors(i, j);
+                    
+                    if (grid[i][j] === 1) {
+                        newGrid[i][j] = (neighbors === 2 || neighbors === 3) ? 1 : 0;
+                    } else {
+                        newGrid[i][j] = neighbors === 3 ? 1 : 0;
+                    }
+                }
+            }
+            
+            grid = newGrid;
+        }
+
+        function animate(timestamp) {
+            if (!running) return;
+            
+            const elapsed = timestamp - lastUpdate;
+            const interval = 1000 / (speed / 10);
+            
+            if (elapsed > interval) {
+                update();
+                draw();
+                lastUpdate = timestamp;
+            }
+            
+            requestAnimationFrame(animate);
+        }
+
+        function loadPattern(patternName) {
+            if (!patterns[patternName]) return;
+            initGrid();
+            const startRow = Math.floor(rows / 2) - 5;
+            const startCol = Math.floor(cols / 2) - 5;
+            
+            patterns[patternName].forEach(([x, y]) => {
+                if (startRow + y >= 0 && startRow + y < rows && startCol + x >= 0 && startCol + x < cols) {
+                    grid[startRow + y][startCol + x] = 1;
+                }
+            });
+            draw();
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / cellSize);
+            const y = Math.floor((e.clientY - rect.top) / cellSize);
+            if (y >= 0 && y < rows && x >= 0 && x < cols) {
+                grid[y][x] = grid[y][x] ? 0 : 1;
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!mouseDown) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / cellSize);
+            const y = Math.floor((e.clientY - rect.top) / cellSize);
+            if (y >= 0 && y < rows && x >= 0 && x < cols) {
+                grid[y][x] = 1;
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+
+        speedSlider.addEventListener('input', (e) => {
+            speed = parseInt(e.target.value);
+            speedValue.textContent = speed;
+        });
+
+        startBtn.addEventListener('click', () => {
+            running = !running;
+            startBtn.textContent = running ? 'Pause' : 'Start';
+            if (running) {
+                lastUpdate = performance.now();
+                requestAnimationFrame(animate);
+            }
+        });
+
+        stepBtn.addEventListener('click', () => {
+            update();
+            draw();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            initGrid();
+            draw();
+        });
+
+        randomBtn.addEventListener('click', () => {
+            initGrid();
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    grid[i][j] = Math.random() > 0.7 ? 1 : 0;
+                }
+            }
+            draw();
+        });
+
+        patternSelect.addEventListener('change', (e) => {
+            if (e.target.value) {
+                loadPattern(e.target.value);
+                e.target.value = '';
+            }
+        });
+
+        initGrid();
+        draw();
+    </script>
+</body>
+</html>

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turbulent Fluid Visualizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 1px solid #000;
+            background-color: #000;
+            cursor: crosshair;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100px;
+        }
+        .value-display {
+            font-size: 12px;
+            min-width: 40px;
+        }
+        .tips {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Turbulent Fluid Visualizer</h1>
+    <canvas id="fluidCanvas" width="700" height="500"></canvas>
+    <div class="controls">
+        <button id="resetBtn">Reset</button>
+        <div class="slider-container">
+            <label>Diffusion:</label>
+            <input type="range" id="diffusionSlider" min="0" max="100" value="10">
+            <span class="value-display" id="diffusionValue">10</span>
+        </div>
+        <div class="slider-container">
+            <label>Viscosity:</label>
+            <input type="range" id="viscositySlider" min="0" max="100" value="20">
+            <span class="value-display" id="viscosityValue">20</span>
+        </div>
+        <div class="slider-container">
+            <label>Fade:</label>
+            <input type="range" id="fadeSlider" min="90" max="100" value="98">
+            <span class="value-display" id="fadeValue">0.98</span>
+        </div>
+    </div>
+    <div class="tips">Click and drag to inject dye and momentum into the fluid</div>
+
+    <script>
+        const canvas = document.getElementById('fluidCanvas');
+        const ctx = canvas.getContext('2d');
+        const resetBtn = document.getElementById('resetBtn');
+        const diffusionSlider = document.getElementById('diffusionSlider');
+        const diffusionValue = document.getElementById('diffusionValue');
+        const viscositySlider = document.getElementById('viscositySlider');
+        const viscosityValue = document.getElementById('viscosityValue');
+        const fadeSlider = document.getElementById('fadeSlider');
+        const fadeValue = document.getElementById('fadeValue');
+
+        const scale = 4;
+        const cols = Math.floor(canvas.width / scale);
+        const rows = Math.floor(canvas.height / scale);
+
+        let velocityX = [];
+        let velocityY = [];
+        let density = [];
+        let prevVelocityX = [];
+        let prevVelocityY = [];
+        let prevDensity = [];
+
+        let diffusion = 0.0001;
+        let viscosity = 0.0002;
+        let fade = 0.98;
+
+        let mouseDown = false;
+        let pmouseX = 0;
+        let pmouseY = 0;
+        let mouseX = 0;
+        let mouseY = 0;
+
+        function init() {
+            velocityX = Array(rows * cols).fill(0);
+            velocityY = Array(rows * cols).fill(0);
+            density = Array(rows * cols).fill(0);
+            prevVelocityX = Array(rows * cols).fill(0);
+            prevVelocityY = Array(rows * cols).fill(0);
+            prevDensity = Array(rows * cols).fill(0);
+        }
+
+        function IX(x, y) {
+            x = Math.max(0, Math.min(cols - 1, x));
+            y = Math.max(0, Math.min(rows - 1, y));
+            return x + y * cols;
+        }
+
+        function diffuse(b, x, x0, diff, dt) {
+            const a = dt * diff * (cols - 2) * (rows - 2);
+            linearSolve(b, x, x0, a, 1 + 6 * a);
+        }
+
+        function linearSolve(b, x, x0, a, c) {
+            const cRecip = 1.0 / c;
+            for (let k = 0; k < 4; k++) {
+                for (let j = 1; j < rows - 1; j++) {
+                    for (let i = 1; i < cols - 1; i++) {
+                        x[IX(i, j)] = (x0[IX(i, j)] + a * (x[IX(i + 1, j)] + x[IX(i - 1, j)] + x[IX(i, j + 1)] + x[IX(i, j - 1)])) * cRecip;
+                    }
+                }
+                setBounds(b, x);
+            }
+        }
+
+        function setBounds(b, x) {
+            for (let i = 1; i < rows - 1; i++) {
+                x[IX(0, i)] = b === 1 ? -x[IX(1, i)] : x[IX(1, i)];
+                x[IX(cols - 1, i)] = b === 1 ? -x[IX(cols - 2, i)] : x[IX(cols - 2, i)];
+            }
+            for (let j = 1; j < cols - 1; j++) {
+                x[IX(j, 0)] = b === 2 ? -x[IX(j, 1)] : x[IX(j, 1)];
+                x[IX(j, rows - 1)] = b === 2 ? -x[IX(j, rows - 2)] : x[IX(j, rows - 2)];
+            }
+
+            x[IX(0, 0)] = 0.5 * (x[IX(1, 0)] + x[IX(0, 1)]);
+            x[IX(0, rows - 1)] = 0.5 * (x[IX(1, rows - 1)] + x[IX(0, rows - 2)]);
+            x[IX(cols - 1, 0)] = 0.5 * (x[IX(cols - 2, 0)] + x[IX(cols - 1, 1)]);
+            x[IX(cols - 1, rows - 1)] = 0.5 * (x[IX(cols - 2, rows - 1)] + x[IX(cols - 1, rows - 2)]);
+        }
+
+        function advect(b, d, d0, velX, velY, dt) {
+            const dtx = dt * (cols - 2);
+            const dty = dt * (rows - 2);
+
+            for (let j = 1; j < rows - 1; j++) {
+                for (let i = 1; i < cols - 1; i++) {
+                    let x = i - dtx * velX[IX(i, j)];
+                    let y = j - dty * velY[IX(i, j)];
+
+                    if (x < 0.5) x = 0.5;
+                    if (x > cols - 1.5) x = cols - 1.5;
+                    let i0 = Math.floor(x);
+                    let i1 = i0 + 1;
+
+                    if (y < 0.5) y = 0.5;
+                    if (y > rows - 1.5) y = rows - 1.5;
+                    let j0 = Math.floor(y);
+                    let j1 = j0 + 1;
+
+                    const s1 = x - i0;
+                    const s0 = 1 - s1;
+                    const t1 = y - j0;
+                    const t0 = 1 - t1;
+
+                    d[IX(i, j)] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) + s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
+                }
+            }
+            setBounds(b, d);
+        }
+
+        function project(velX, velY, p, div) {
+            for (let j = 1; j < rows - 1; j++) {
+                for (let i = 1; i < cols - 1; i++) {
+                    div[IX(i, j)] = -0.5 * (velX[IX(i + 1, j)] - velX[IX(i - 1, j)] + velY[IX(i, j + 1)] - velY[IX(i, j - 1)]) / cols;
+                    p[IX(i, j)] = 0;
+                }
+            }
+            setBounds(0, div);
+            setBounds(0, p);
+            linearSolve(0, p, div, 1, 6);
+
+            for (let j = 1; j < rows - 1; j++) {
+                for (let i = 1; i < cols - 1; i++) {
+                    velX[IX(i, j)] -= 0.5 * (p[IX(i + 1, j)] - p[IX(i - 1, j)]) * cols;
+                    velY[IX(i, j)] -= 0.5 * (p[IX(i, j + 1)] - p[IX(i, j - 1)]) * rows;
+                }
+            }
+            setBounds(1, velX);
+            setBounds(2, velY);
+        }
+
+        function step() {
+            diffuse(1, prevVelocityX, velocityX, viscosity, 0.016);
+            diffuse(2, prevVelocityY, velocityY, viscosity, 0.016);
+
+            project(prevVelocityX, prevVelocityY, velocityX, velocityY);
+
+            advect(1, velocityX, prevVelocityX, prevVelocityX, prevVelocityY, 0.016);
+            advect(2, velocityY, prevVelocityY, prevVelocityX, prevVelocityY, 0.016);
+
+            project(velocityX, velocityY, prevVelocityX, prevVelocityY);
+
+            diffuse(0, prevDensity, density, diffusion, 0.016);
+            advect(0, density, prevDensity, velocityX, velocityY, 0.016);
+
+            for (let i = 0; i < density.length; i++) {
+                density[i] *= fade;
+            }
+        }
+
+        function addDensity(x, y, amount) {
+            const index = IX(x, y);
+            density[index] += amount;
+        }
+
+        function addVelocity(x, y, amountX, amountY) {
+            const index = IX(x, y);
+            velocityX[index] += amountX;
+            velocityY[index] += amountY;
+        }
+
+        function render() {
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+            const data = imageData.data;
+
+            for (let j = 0; j < rows; j++) {
+                for (let i = 0; i < cols; i++) {
+                    const d = density[IX(i, j)];
+                    const c = Math.min(255, Math.max(0, d * 255));
+                    
+                    const hue = (d * 360) % 360;
+                    const rgb = hslToRgb(hue / 360, 1, Math.min(0.5, c / 255 * 0.5));
+
+                    for (let py = 0; py < scale; py++) {
+                        for (let px = 0; px < scale; px++) {
+                            const index = ((j * scale + py) * canvas.width + (i * scale + px)) * 4;
+                            data[index] = rgb[0];
+                            data[index + 1] = rgb[1];
+                            data[index + 2] = rgb[2];
+                            data[index + 3] = 255;
+                        }
+                    }
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function hslToRgb(h, s, l) {
+            let r, g, b;
+            if (s === 0) {
+                r = g = b = l;
+            } else {
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1 / 6) return p + (q - p) * 6 * t;
+                    if (t < 1 / 2) return q;
+                    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                    return p;
+                };
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1 / 3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1 / 3);
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+
+        function animate() {
+            step();
+            render();
+            requestAnimationFrame(animate);
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            const rect = canvas.getBoundingClientRect();
+            mouseX = Math.floor((e.clientX - rect.left) / scale);
+            mouseY = Math.floor((e.clientY - rect.top) / scale);
+            pmouseX = mouseX;
+            pmouseY = mouseY;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!mouseDown) return;
+            const rect = canvas.getBoundingClientRect();
+            pmouseX = mouseX;
+            pmouseY = mouseY;
+            mouseX = Math.floor((e.clientX - rect.left) / scale);
+            mouseY = Math.floor((e.clientY - rect.top) / scale);
+
+            const amountX = (mouseX - pmouseX) * 2;
+            const amountY = (mouseY - pmouseY) * 2;
+
+            addDensity(mouseX, mouseY, 200);
+            addVelocity(mouseX, mouseY, amountX, amountY);
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+
+        diffusionSlider.addEventListener('input', (e) => {
+            diffusion = parseInt(e.target.value) / 100000;
+            diffusionValue.textContent = e.target.value;
+        });
+
+        viscositySlider.addEventListener('input', (e) => {
+            viscosity = parseInt(e.target.value) / 100000;
+            viscosityValue.textContent = e.target.value;
+        });
+
+        fadeSlider.addEventListener('input', (e) => {
+            fade = parseInt(e.target.value) / 100;
+            fadeValue.textContent = fade.toFixed(2);
+        });
+
+        resetBtn.addEventListener('click', () => {
+            init();
+        });
+
+        init();
+        animate();
+    </script>
+</body>
+</html>

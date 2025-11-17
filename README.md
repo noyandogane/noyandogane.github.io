@@ -15,15 +15,24 @@
 
 ---
 
-## Suggested New Projects
+## New Interactive Simulations
 
-- **Chaotic Pendulum Playground** – simulate a double or triple pendulum with draggable starting positions and rainbow trails that highlight chaotic motion.
-- **Sorting Algorithm Visualizer** – animate bubble, insertion, merge, and quick sort side by side with adjustable array sizes and speeds.
-- **Epidemic Spread Simulator** – show individuals moving on a grid with sliders for infection probability, recovery time, and distancing measures.
-- **Perlin Noise Terrain Generator** – render scrolling 2D terrain using Perlin noise with seed, frequency, and elevation controls.
-- **Game of Life Sandbox** – provide Conway’s Game of Life with preset patterns, paint tools, and step/run simulation modes.
-- **Fourier Series Drawer** – visualize rotating epicycles that reconstruct drawn shapes, allowing users to sketch their own paths.
-- **Traffic Intersection Simulator** – animate cars and pedestrians navigating an intersection where users can tweak light timing and lane count.
-- **Fractal Tree Builder** – render recursive trees with controls for branch angle, depth, and seasonal color palettes.
-- **Shortest Path Explorer** – let users place start/end nodes and walls on a grid, then step through Dijkstra or A* in real time.
-- **Turbulent Fluid Visualizer** – interact with a simplified 2D fluid simulation, injecting dye or velocity to watch swirling patterns evolve.
+[Chaotic Pendulum](https://noyandogane.github.io/chaotic-pendulum.html)
+
+[Sorting Algorithm Visualizer](https://noyandogane.github.io/sorting-visualizer.html)
+
+[Epidemic Spread Simulator](https://noyandogane.github.io/epidemic-simulator.html)
+
+[Perlin Noise Terrain Generator](https://noyandogane.github.io/perlin-terrain.html)
+
+[Conway's Game of Life](https://noyandogane.github.io/game-of-life.html)
+
+[Fourier Series Drawer](https://noyandogane.github.io/fourier-drawer.html)
+
+[Traffic Intersection Simulator](https://noyandogane.github.io/traffic-simulator.html)
+
+[Fractal Tree Builder](https://noyandogane.github.io/fractal-tree.html)
+
+[Shortest Path Explorer](https://noyandogane.github.io/shortest-path.html)
+
+[Turbulent Fluid Visualizer](https://noyandogane.github.io/fluid-simulator.html)

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shortest Path Explorer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 1px solid #000;
+            background-color: #fff;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        select {
+            padding: 6px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .legend div {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend span {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Shortest Path Explorer</h1>
+    <canvas id="gridCanvas" width="600" height="600"></canvas>
+    <div class="controls">
+        <button id="startBtn">Start</button>
+        <button id="stepBtn">Step</button>
+        <button id="resetBtn">Reset</button>
+        <select id="algorithmSelect">
+            <option value="dijkstra">Dijkstra's Algorithm</option>
+            <option value="aStar">A*</option>
+        </select>
+        <select id="modeSelect">
+            <option value="wall">Add Walls</option>
+            <option value="start">Set Start</option>
+            <option value="end">Set End</option>
+        </select>
+    </div>
+    <div class="legend">
+        <div><span style="background-color: #007bff"></span> Start</div>
+        <div><span style="background-color: #dc3545"></span> End</div>
+        <div><span style="background-color: #343a40"></span> Wall</div>
+        <div><span style="background-color: #ffc107"></span> Frontier</div>
+        <div><span style="background-color: #28a745"></span> Path</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const stepBtn = document.getElementById('stepBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const algorithmSelect = document.getElementById('algorithmSelect');
+        const modeSelect = document.getElementById('modeSelect');
+
+        const gridSize = 30;
+        const cellSize = canvas.width / gridSize;
+
+        let grid = [];
+        let startNode = { x: 2, y: 2 };
+        let endNode = { x: gridSize - 3, y: gridSize - 3 };
+        let openSet = [];
+        let closedSet = [];
+        let cameFrom = {};
+        let gScore = {};
+        let fScore = {};
+        let running = false;
+        let intervalId = null;
+
+        function initGrid() {
+            grid = [];
+            for (let y = 0; y < gridSize; y++) {
+                const row = [];
+                for (let x = 0; x < gridSize; x++) {
+                    row.push({ x, y, wall: false });
+                }
+                grid.push(row);
+            }
+            resetSearch();
+        }
+
+        function resetSearch() {
+            openSet = [];
+            closedSet = [];
+            cameFrom = {};
+            gScore = {};
+            fScore = {};
+            const startKey = nodeKey(startNode);
+            openSet.push(startNode);
+            gScore[startKey] = 0;
+            fScore[startKey] = heuristic(startNode, endNode);
+        }
+
+        function nodeKey(node) {
+            return `${node.x}-${node.y}`;
+        }
+
+        function heuristic(a, b) {
+            return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+        }
+
+        function neighbors(node) {
+            const result = [];
+            const directions = [
+                { x: 1, y: 0 },
+                { x: -1, y: 0 },
+                { x: 0, y: 1 },
+                { x: 0, y: -1 }
+            ];
+
+            for (let dir of directions) {
+                const nx = node.x + dir.x;
+                const ny = node.y + dir.y;
+                if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize && !grid[ny][nx].wall) {
+                    result.push({ x: nx, y: ny });
+                }
+            }
+            return result;
+        }
+
+        function lowestFScoreNode() {
+            let lowest = openSet[0];
+            let lowestScore = fScore[nodeKey(lowest)] || Infinity;
+
+            for (let node of openSet) {
+                const key = nodeKey(node);
+                const score = fScore[key] || Infinity;
+                if (score < lowestScore) {
+                    lowest = node;
+                    lowestScore = score;
+                }
+            }
+            return lowest;
+        }
+
+        function reconstructPath(current) {
+            const path = [current];
+            const key = nodeKey(current);
+
+            while (cameFrom[key]) {
+                current = cameFrom[key];
+                path.push(current);
+                key = nodeKey(current);
+            }
+
+            return path;
+        }
+
+        function stepAlgorithm() {
+            if (openSet.length === 0) {
+                running = false;
+                return false;
+            }
+
+            const current = lowestFScoreNode();
+            const currentKey = nodeKey(current);
+
+            if (current.x === endNode.x && current.y === endNode.y) {
+                running = false;
+                draw(reconstructPath(current));
+                return true;
+            }
+
+            openSet = openSet.filter(node => nodeKey(node) !== currentKey);
+            closedSet.push(current);
+
+            for (let neighbor of neighbors(current)) {
+                const neighborKey = nodeKey(neighbor);
+                if (closedSet.some(node => nodeKey(node) === neighborKey)) {
+                    continue;
+                }
+
+                const tentativeG = (gScore[currentKey] || Infinity) + 1;
+
+                if (!openSet.some(node => nodeKey(node) === neighborKey)) {
+                    openSet.push(neighbor);
+                } else if (tentativeG >= (gScore[neighborKey] || Infinity)) {
+                    continue;
+                }
+
+                cameFrom[neighborKey] = current;
+                gScore[neighborKey] = tentativeG;
+                const h = algorithmSelect.value === 'aStar' ? heuristic(neighbor, endNode) : 0;
+                fScore[neighborKey] = gScore[neighborKey] + h;
+            }
+
+            draw();
+            return false;
+        }
+
+        function draw(path = []) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    const cell = grid[y][x];
+                    const key = `${x}-${y}`;
+                    
+                    ctx.fillStyle = '#fff';
+                    if (cell.wall) ctx.fillStyle = '#343a40';
+                    if (x === startNode.x && y === startNode.y) ctx.fillStyle = '#007bff';
+                    if (x === endNode.x && y === endNode.y) ctx.fillStyle = '#dc3545';
+                    if (openSet.some(node => nodeKey(node) === key)) ctx.fillStyle = '#ffc107';
+                    if (path.some(node => node.x === x && node.y === y)) ctx.fillStyle = '#28a745';
+
+                    ctx.fillRect(x * cellSize, y * cellSize, cellSize - 1, cellSize - 1);
+                }
+            }
+
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= gridSize; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cellSize, 0);
+                ctx.lineTo(i * cellSize, canvas.height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * cellSize);
+                ctx.lineTo(canvas.width, i * cellSize);
+                ctx.stroke();
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / cellSize);
+            const y = Math.floor((e.clientY - rect.top) / cellSize);
+
+            if (modeSelect.value === 'start') {
+                startNode = { x, y };
+                resetSearch();
+            } else if (modeSelect.value === 'end') {
+                endNode = { x, y };
+                resetSearch();
+            } else {
+                grid[y][x].wall = !grid[y][x].wall;
+            }
+            draw();
+        });
+
+        startBtn.addEventListener('click', () => {
+            if (running) {
+                running = false;
+                startBtn.textContent = 'Start';
+                clearInterval(intervalId);
+            } else {
+                running = true;
+                startBtn.textContent = 'Pause';
+                intervalId = setInterval(() => {
+                    const completed = stepAlgorithm();
+                    if (completed) {
+                        clearInterval(intervalId);
+                        startBtn.textContent = 'Start';
+                    }
+                }, 50);
+            }
+        });
+
+        stepBtn.addEventListener('click', () => {
+            if (!running) {
+                stepAlgorithm();
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            running = false;
+            startBtn.textContent = 'Start';
+            clearInterval(intervalId);
+            initGrid();
+            draw();
+        });
+
+        initGrid();
+        draw();
+    </script>
+</body>
+</html>

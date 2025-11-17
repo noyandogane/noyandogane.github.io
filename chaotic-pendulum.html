@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaotic Pendulum Playground</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 1px solid #000;
+            background-color: #fff;
+            cursor: crosshair;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100px;
+        }
+        .value-display {
+            font-size: 12px;
+            min-width: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chaotic Double Pendulum</h1>
+    <canvas id="pendulumCanvas" width="700" height="500"></canvas>
+    <div class="controls">
+        <button id="startBtn">Start</button>
+        <button id="resetBtn">Reset</button>
+        <button id="clearBtn">Clear Trail</button>
+        <div class="slider-container">
+            <label>Gravity:</label>
+            <input type="range" id="gravitySlider" min="5" max="20" value="10" step="0.5">
+            <span class="value-display" id="gravityValue">10</span>
+        </div>
+        <div class="slider-container">
+            <label>Trail:</label>
+            <input type="checkbox" id="trailCheckbox" checked>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('pendulumCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const gravitySlider = document.getElementById('gravitySlider');
+        const gravityValue = document.getElementById('gravityValue');
+        const trailCheckbox = document.getElementById('trailCheckbox');
+
+        let running = false;
+        let gravity = 10;
+        let trail = [];
+        
+        const origin = { x: canvas.width / 2, y: 120 };
+        const length1 = 140;
+        const length2 = 140;
+        const mass1 = 10;
+        const mass2 = 10;
+        
+        let angle1 = Math.PI / 2;
+        let angle2 = Math.PI / 2;
+        let angleVel1 = 0;
+        let angleVel2 = 0;
+        
+        let hue = 0;
+
+        gravitySlider.addEventListener('input', (e) => {
+            gravity = parseFloat(e.target.value);
+            gravityValue.textContent = gravity;
+        });
+
+        startBtn.addEventListener('click', () => {
+            running = !running;
+            startBtn.textContent = running ? 'Pause' : 'Start';
+            if (running) animate();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            angle1 = Math.PI / 2;
+            angle2 = Math.PI / 2;
+            angleVel1 = 0;
+            angleVel2 = 0;
+            trail = [];
+            hue = 0;
+            running = false;
+            startBtn.textContent = 'Start';
+            draw(true);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            trail = [];
+            draw(true);
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            const dx1 = mouseX - origin.x;
+            const dy1 = mouseY - origin.y;
+            angle1 = Math.atan2(dy1, dx1) + Math.PI / 2;
+            
+            const x1 = origin.x + length1 * Math.sin(angle1);
+            const y1 = origin.y + length1 * Math.cos(angle1);
+            const dx2 = mouseX - x1;
+            const dy2 = mouseY - y1;
+            angle2 = Math.atan2(dy2, dx2) + Math.PI / 2;
+            
+            angleVel1 = 0;
+            angleVel2 = 0;
+            trail = [];
+            draw(true);
+        });
+
+        function calculateAccelerations() {
+            const num1 = -gravity * (2 * mass1 + mass2) * Math.sin(angle1);
+            const num2 = -mass2 * gravity * Math.sin(angle1 - 2 * angle2);
+            const num3 = -2 * Math.sin(angle1 - angle2) * mass2;
+            const num4 = angleVel2 * angleVel2 * length2 + angleVel1 * angleVel1 * length1 * Math.cos(angle1 - angle2);
+            const den = length1 * (2 * mass1 + mass2 - mass2 * Math.cos(2 * angle1 - 2 * angle2));
+            const accel1 = (num1 + num2 + num3 * num4) / den;
+
+            const num5 = 2 * Math.sin(angle1 - angle2);
+            const num6 = angleVel1 * angleVel1 * length1 * (mass1 + mass2);
+            const num7 = gravity * (mass1 + mass2) * Math.cos(angle1);
+            const num8 = angleVel2 * angleVel2 * length2 * mass2 * Math.cos(angle1 - angle2);
+            const den2 = length2 * (2 * mass1 + mass2 - mass2 * Math.cos(2 * angle1 - 2 * angle2));
+            const accel2 = (num5 * (num6 + num7 + num8)) / den2;
+
+            return { accel1, accel2 };
+        }
+
+        function update() {
+            const { accel1, accel2 } = calculateAccelerations();
+            
+            angleVel1 += accel1 * 0.01;
+            angleVel2 += accel2 * 0.01;
+            angle1 += angleVel1 * 0.01;
+            angle2 += angleVel2 * 0.01;
+            
+            angleVel1 *= 0.9995;
+            angleVel2 *= 0.9995;
+        }
+
+        function draw(clear) {
+            if (clear) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            } else if (trailCheckbox.checked) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            if (trailCheckbox.checked && trail.length > 0) {
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                for (let i = 1; i < trail.length; i++) {
+                    const alpha = Math.pow(i / trail.length, 2);
+                    ctx.strokeStyle = `hsla(${trail[i].hue}, 70%, 50%, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
+                    ctx.lineTo(trail[i].x, trail[i].y);
+                    ctx.stroke();
+                }
+            }
+            
+            const x1 = origin.x + length1 * Math.sin(angle1);
+            const y1 = origin.y + length1 * Math.cos(angle1);
+            const x2 = x1 + length2 * Math.sin(angle2);
+            const y2 = y1 + length2 * Math.cos(angle2);
+            
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(origin.x, origin.y);
+            ctx.lineTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            
+            ctx.fillStyle = '#343a40';
+            ctx.beginPath();
+            ctx.arc(origin.x, origin.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#007bff';
+            ctx.beginPath();
+            ctx.arc(x1, y1, 12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+            ctx.beginPath();
+            ctx.arc(x2, y2, 14, 0, Math.PI * 2);
+            ctx.fill();
+            
+            if (trailCheckbox.checked) {
+                trail.push({ x: x2, y: y2, hue });
+                if (trail.length > 600) trail.shift();
+                hue = (hue + 1) % 360;
+            }
+        }
+
+        function animate() {
+            if (!running) return;
+            for (let i = 0; i < 4; i++) {
+                update();
+            }
+            draw(false);
+            requestAnimationFrame(animate);
+        }
+
+        draw(true);
+    </script>
+</body>
+</html>

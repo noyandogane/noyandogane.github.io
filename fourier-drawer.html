@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fourier Series Drawer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 1px solid #000;
+            background-color: #fff;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input[type="range"] {
+            width: 120px;
+        }
+        label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .value-display {
+            font-size: 12px;
+            min-width: 40px;
+        }
+        .tips {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Fourier Series Drawer</h1>
+    <canvas id="drawCanvas" width="600" height="600"></canvas>
+    <canvas id="fourierCanvas" width="600" height="300" style="margin-top: 20px;"></canvas>
+    <div class="controls">
+        <button id="drawBtn">Draw Mode</button>
+        <button id="animateBtn">Animate</button>
+        <button id="clearBtn">Clear</button>
+        <div class="slider-container">
+            <label>Epicycles:</label>
+            <input type="range" id="circleSlider" min="5" max="100" value="30">
+            <span class="value-display" id="circleValue">30</span>
+        </div>
+        <div class="slider-container">
+            <label>Speed:</label>
+            <input type="range" id="speedSlider" min="1" max="100" value="50">
+            <span class="value-display" id="speedValue">50</span>
+        </div>
+    </div>
+    <div class="tips">Click and drag to draw a path. Switch to animate to see epicycles recreate your drawing.</div>
+
+    <script>
+        const drawCanvas = document.getElementById('drawCanvas');
+        const drawCtx = drawCanvas.getContext('2d');
+        const fourierCanvas = document.getElementById('fourierCanvas');
+        const fourierCtx = fourierCanvas.getContext('2d');
+        const drawBtn = document.getElementById('drawBtn');
+        const animateBtn = document.getElementById('animateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const circleSlider = document.getElementById('circleSlider');
+        const circleValue = document.getElementById('circleValue');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+
+        let drawing = false;
+        let drawMode = true;
+        let path = [];
+        let fourier = [];
+        let time = 0;
+        let speed = 50;
+        let numCircles = 30;
+
+        function complex(x, y) {
+            return { re: x, im: y };
+        }
+
+        function complexAdd(a, b) {
+            return { re: a.re + b.re, im: a.im + b.im };
+        }
+
+        function complexMult(a, b) {
+            return {
+                re: a.re * b.re - a.im * b.im,
+                im: a.re * b.im + a.im * b.re
+            };
+        }
+
+        function complexScale(a, s) {
+            return { re: a.re * s, im: a.im * s };
+        }
+
+        function computeDFT(points) {
+            const N = points.length;
+            const result = [];
+            
+            for (let k = 0; k < N; k++) {
+                let sum = complex(0, 0);
+                for (let n = 0; n < N; n++) {
+                    const angle = (2 * Math.PI * k * n) / N;
+                    const c = complex(Math.cos(angle), -Math.sin(angle));
+                    sum = complexAdd(sum, complexMult(points[n], c));
+                }
+                sum = complexScale(sum, 1 / N);
+                result.push({
+                    freq: k,
+                    amp: Math.sqrt(sum.re * sum.re + sum.im * sum.im),
+                    phase: Math.atan2(sum.im, sum.re)
+                });
+            }
+
+            result.sort((a, b) => b.amp - a.amp);
+            return result;
+        }
+
+        function drawEpicycles() {
+            fourierCtx.clearRect(0, 0, fourierCanvas.width, fourierCanvas.height);
+
+            let x = fourierCanvas.width / 2;
+            let y = fourierCanvas.height / 2;
+            let pathPoints = [];
+
+            fourierCtx.beginPath();
+            fourierCtx.moveTo(x, y);
+
+            for (let i = 0; i < Math.min(numCircles, fourier.length); i++) {
+                const { freq, amp, phase } = fourier[i];
+                const prevX = x;
+                const prevY = y;
+
+                x += amp * Math.cos(freq * time + phase);
+                y += amp * Math.sin(freq * time + phase);
+                
+                fourierCtx.strokeStyle = i === 0 ? '#007bff' : 'rgba(0,0,0,0.3)';
+                fourierCtx.beginPath();
+                fourierCtx.arc(prevX, prevY, amp, 0, Math.PI * 2);
+                fourierCtx.stroke();
+
+                fourierCtx.beginPath();
+                fourierCtx.moveTo(prevX, prevY);
+                fourierCtx.lineTo(x, y);
+                fourierCtx.stroke();
+
+                pathPoints.push({ x, y });
+            }
+
+            return pathPoints;
+        }
+
+        function animate() {
+            if (drawMode) return;
+
+            const epicyclePath = drawEpicycles();
+
+            drawCtx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+            drawCtx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+
+            drawCtx.beginPath();
+            drawCtx.arc(epicyclePath[epicyclePath.length - 1].x, epicyclePath[epicyclePath.length - 1].y, 5, 0, Math.PI * 2);
+            drawCtx.fillStyle = '#007bff';
+            drawCtx.fill();
+
+            time += (speed / 1000);
+            requestAnimationFrame(animate);
+        }
+
+        drawCanvas.addEventListener('mousedown', (e) => {
+            if (!drawMode) return;
+            drawing = true;
+            path = [];
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+        });
+
+        drawCanvas.addEventListener('mousemove', (e) => {
+            if (!drawing || !drawMode) return;
+            const rect = drawCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            path.push(complex(x - drawCanvas.width / 2, y - drawCanvas.height / 2));
+
+            drawCtx.fillStyle = '#007bff';
+            drawCtx.fillRect(x, y, 2, 2);
+        });
+
+        drawCanvas.addEventListener('mouseup', () => {
+            drawing = false;
+        });
+
+        drawBtn.addEventListener('click', () => {
+            drawMode = true;
+            drawBtn.disabled = true;
+            animateBtn.disabled = false;
+        });
+
+        animateBtn.addEventListener('click', () => {
+            if (path.length === 0) return;
+            fourier = computeDFT(path);
+            time = 0;
+            drawMode = false;
+            drawBtn.disabled = false;
+            animateBtn.disabled = true;
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            animate();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            path = [];
+            fourier = [];
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            fourierCtx.clearRect(0, 0, fourierCanvas.width, fourierCanvas.height);
+        });
+
+        circleSlider.addEventListener('input', (e) => {
+            numCircles = parseInt(e.target.value);
+            circleValue.textContent = numCircles;
+        });
+
+        speedSlider.addEventListener('input', (e) => {
+            speed = parseInt(e.target.value);
+            speedValue.textContent = speed;
+        });
+
+        drawBtn.disabled = true;
+    </script>
+</body>
+</html>
