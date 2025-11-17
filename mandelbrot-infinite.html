@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Mandelbrot Explorer - Ultra HD</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a0a0a 100%);
+            overflow: hidden;
+            color: #fff;
+        }
+        
+        #container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        #sidebar {
+            width: 320px;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            border-right: 2px solid rgba(0, 255, 255, 0.3);
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 10;
+            box-shadow: 5px 0 20px rgba(0, 255, 255, 0.2);
+        }
+        
+        #canvasContainer {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            image-rendering: pixelated;
+        }
+        
+        h1 {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+            padding-bottom: 10px;
+        }
+        
+        .section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ff00ff;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            background: linear-gradient(135deg, #00ffff 0%, #00cccc 100%);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        
+        button:hover {
+            background: linear-gradient(135deg, #ff00ff 0%, #cc00cc 100%);
+            box-shadow: 0 6px 20px rgba(255, 0, 255, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button.active {
+            background: linear-gradient(135deg, #ff00ff 0%, #cc00cc 100%);
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.8);
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            color: #aaa;
+            font-size: 12px;
+            margin-bottom: 5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            margin-bottom: 5px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00ffff, #ff00ff);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00ffff, #ff00ff);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+        
+        .value-display {
+            color: #00ffff;
+            font-size: 11px;
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+        
+        select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #ff00ff;
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            max-width: 300px;
+            pointer-events: none;
+        }
+        
+        #info .label {
+            color: #aaa;
+            display: inline-block;
+            width: 90px;
+        }
+        
+        #info .value {
+            color: #00ffff;
+            font-weight: bold;
+        }
+        
+        #coordinates {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 0, 255, 0.3);
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            color: #ff00ff;
+            pointer-events: none;
+        }
+        
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .preset-grid button {
+            margin-bottom: 0;
+            font-size: 11px;
+            padding: 8px 10px;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px 50px;
+            border-radius: 10px;
+            border: 2px solid #00ffff;
+            font-size: 18px;
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            display: none;
+            z-index: 1000;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 255, 255, 0.1);
+            border-top: 4px solid #00ffff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto 0;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #00ffff, #ff00ff);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #ff00ff, #00ffff);
+        }
+        
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #ff00ff;
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        
+        .checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+        
+        #historyList {
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            padding: 8px;
+        }
+        
+        .history-item {
+            padding: 6px;
+            margin-bottom: 4px;
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+        
+        .history-item:hover {
+            background: rgba(255, 0, 255, 0.2);
+            border-color: #ff00ff;
+            transform: translateX(5px);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="sidebar">
+            <h1>⚡ INFINITE EXPLORER</h1>
+            
+            <div class="section">
+                <div class="section-title">🎮 Navigation</div>
+                <button onclick="state.reset()">Reset View</button>
+                <button onclick="state.exportImage()">Export 4K Image</button>
+                <button onclick="state.exportVideo()">Record Animation</button>
+                <button id="autoExploreBtn" onclick="state.toggleAutoExplore()">Auto Explore</button>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">🎨 Rendering</div>
+                <div class="control-group">
+                    <label>Max Iterations</label>
+                    <input type="range" id="iterationsSlider" min="100" max="10000" step="100" value="1000" oninput="state.setIterations(this.value)">
+                    <div class="value-display"><span id="iterationsValue">1000</span></div>
+                </div>
+                <div class="control-group">
+                    <label>Quality (Samples/Pixel)</label>
+                    <input type="range" id="qualitySlider" min="1" max="16" step="1" value="1" oninput="state.setQuality(this.value)">
+                    <div class="value-display"><span id="qualityValue">1</span>x</div>
+                </div>
+                <div class="control-group">
+                    <label>Smoothing</label>
+                    <input type="range" id="smoothingSlider" min="0" max="100" step="1" value="50" oninput="state.setSmoothing(this.value)">
+                    <div class="value-display"><span id="smoothingValue">50</span>%</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">🌈 Colors</div>
+                <div class="control-group">
+                    <label>Color Scheme</label>
+                    <select id="colorScheme" onchange="state.setColorScheme(this.value)">
+                        <option value="rainbow">Rainbow</option>
+                        <option value="fire">Fire</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="forest">Forest</option>
+                        <option value="ultraviolet">Ultraviolet</option>
+                        <option value="psychedelic">Psychedelic</option>
+                        <option value="aurora">Aurora</option>
+                        <option value="plasma">Plasma</option>
+                        <option value="ice">Ice</option>
+                        <option value="sunset">Sunset</option>
+                        <option value="cosmic">Cosmic</option>
+                        <option value="neon">Neon</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Color Rotation</label>
+                    <input type="range" id="colorRotation" min="0" max="360" step="1" value="0" oninput="state.setColorRotation(this.value)">
+                    <div class="value-display"><span id="colorRotationValue">0</span>°</div>
+                </div>
+                <div class="control-group">
+                    <label>Color Frequency</label>
+                    <input type="range" id="colorFreq" min="0.1" max="10" step="0.1" value="1" oninput="state.setColorFrequency(this.value)">
+                    <div class="value-display"><span id="colorFreqValue">1.0</span></div>
+                </div>
+                <div class="control-group">
+                    <label>Color Saturation</label>
+                    <input type="range" id="saturation" min="0" max="200" step="1" value="100" oninput="state.setSaturation(this.value)">
+                    <div class="value-display"><span id="saturationValue">100</span>%</div>
+                </div>
+                <button id="autoColorBtn" onclick="state.toggleAutoColor()">Auto Color Cycle</button>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">🔬 Advanced</div>
+                <div class="control-group">
+                    <label>Julia Mode (c real)</label>
+                    <input type="number" id="juliaCReal" step="0.001" value="0" oninput="state.setJuliaC()">
+                </div>
+                <div class="control-group">
+                    <label>Julia Mode (c imag)</label>
+                    <input type="number" id="juliaCImag" step="0.001" value="0" oninput="state.setJuliaC()">
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="juliaMode" onchange="state.toggleJuliaMode()">
+                    <label for="juliaMode">Enable Julia Set</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="perturbation" onchange="state.togglePerturbation()">
+                    <label for="perturbation">Perturbation Theory</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="distanceEstimate" onchange="state.toggleDistanceEstimate()">
+                    <label for="distanceEstimate">Distance Estimation</label>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">📍 Famous Locations</div>
+                <div class="preset-grid">
+                    <button onclick="state.gotoPreset('seahorse')">Seahorse Valley</button>
+                    <button onclick="state.gotoPreset('elephant')">Elephant Valley</button>
+                    <button onclick="state.gotoPreset('spiral')">Double Spiral</button>
+                    <button onclick="state.gotoPreset('minibrot')">Mini Mandelbrot</button>
+                    <button onclick="state.gotoPreset('scepter')">Scepter Valley</button>
+                    <button onclick="state.gotoPreset('tendril')">Tendril</button>
+                    <button onclick="state.gotoPreset('cathedral')">Cathedral</button>
+                    <button onclick="state.gotoPreset('galaxy')">Galaxy</button>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">📚 History</div>
+                <div id="historyList"></div>
+                <button onclick="state.clearHistory()">Clear History</button>
+            </div>
+        </div>
+        
+        <div id="canvasContainer">
+            <canvas id="fractalCanvas"></canvas>
+            
+            <div id="info">
+                <div><span class="label">Zoom Level:</span> <span class="value" id="zoomDisplay">1.00x</span></div>
+                <div><span class="label">Iterations:</span> <span class="value" id="iterDisplay">1000</span></div>
+                <div><span class="label">FPS:</span> <span class="value" id="fpsDisplay">60</span></div>
+                <div><span class="label">Render Time:</span> <span class="value" id="renderTimeDisplay">0ms</span></div>
+                <div><span class="label">Precision:</span> <span class="value" id="precisionDisplay">float64</span></div>
+            </div>
+            
+            <div id="coordinates">
+                <span id="coordsDisplay">Center: (0.0000000000, 0.0000000000)</span>
+            </div>
+            
+            <div id="loading">
+                <div>Computing fractal...</div>
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+ 
+    <script>
+        class BigDecimal {
+            constructor(value) {
+                this.value = typeof value === 'string' ? parseFloat(value) : value;
+                this.precision = 15;
+            }
+            
+            add(other) {
+                return new BigDecimal(this.value + other.value);
+            }
+            
+            sub(other) {
+                return new BigDecimal(this.value - other.value);
+            }
+            
+            mul(other) {
+                return new BigDecimal(this.value * other.value);
+            }
+            
+            div(other) {
+                return new BigDecimal(this.value / other.value);
+            }
+            
+            toFloat() {
+                return this.value;
+            }
+            
+            toString() {
+                return this.value.toExponential(this.precision);
+            }
+        }
+        class MandelbrotState {
+            constructor() {
+                this.canvas = document.getElementById('fractalCanvas');
+                this.ctx = this.canvas.getContext('2d', { alpha: false, desynchronized: true });
+                
+                this.resizeCanvas();
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                    this.render();
+                });
+                
+                this.centerX = new BigDecimal(-0.5);
+                this.centerY = new BigDecimal(0.0);
+                this.zoom = new BigDecimal(0.3);
+                
+                this.maxIterations = 1000;
+                this.quality = 1;
+                this.smoothing = 0.5;
+                this.colorScheme = 'rainbow';
+                this.colorRotation = 0;
+                this.colorFrequency = 1.0;
+                this.saturation = 1.0;
+                
+                this.juliaMode = false;
+                this.juliaCReal = 0;
+                this.juliaCImag = 0;
+                this.usePerturbation = false;
+                this.distanceEstimate = false;
+                
+                this.isDragging = false;
+                this.lastX = 0;
+                this.lastY = 0;
+                
+                this.autoExplore = false;
+                this.autoColor = false;
+                this.autoExploreAngle = 0;
+                this.mousePosition = null;
+                
+                this.history = [];
+                this.maxHistory = 50;
+                
+                this.workers = [];
+                this.numWorkers = navigator.hardwareConcurrency || 4;
+                this.workerPool = [];
+                
+                this.fps = 60;
+                this.lastFrameTime = Date.now();
+                this.frameCount = 0;
+                
+                this.setupEventListeners();
+                this.setupWorkers();
+                this.render();
+                this.animate();
+            }
+            
+            resizeCanvas() {
+                const container = document.getElementById('canvasContainer');
+                this.canvas.width = container.clientWidth;
+                this.canvas.height = container.clientHeight;
+                this.imageData = this.ctx.createImageData(this.canvas.width, this.canvas.height);
+            }
+            
+            setupEventListeners() {
+                this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+                this.canvas.addEventListener('mouseleave', (e) => this.handleMouseUp(e));
+                this.canvas.addEventListener('wheel', (e) => this.handleWheel(e));
+                this.canvas.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
+                
+                this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e));
+                this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e));
+                this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e));
+            }
+            
+            setupWorkers() {
+                const workerCode = `
+                    function iterateStandard(x0, y0, juliaMode, juliaCReal, juliaCImag, maxIterations, distanceEstimate) {
+                        let x = juliaMode ? x0 : 0;
+                        let y = juliaMode ? y0 : 0;
+                        const cx = juliaMode ? juliaCReal : x0;
+                        const cy = juliaMode ? juliaCImag : y0;
+                        let dx = 1;
+                        let dy = 0;
+                        let iteration = 0;
+                        let x2 = x * x;
+                        let y2 = y * y;
+                        for (; iteration < maxIterations; iteration++) {
+                            if (x2 + y2 > 4) {
+                                break;
+                            }
+                            if (distanceEstimate) {
+                                const nextDx = 2 * (x * dx - y * dy) + 1;
+                                const nextDy = 2 * (x * dy + y * dx);
+                                dx = nextDx;
+                                dy = nextDy;
+                            }
+                            y = 2 * x * y + cy;
+                            x = x2 - y2 + cx;
+                            x2 = x * x;
+                            y2 = y * y;
+                        }
+                        const magSq = x2 + y2;
+                        const smooth = iteration === maxIterations ? maxIterations : iteration + 1 - Math.log2(Math.log2(Math.max(magSq, 1e-12)));
+                        return { iteration, smooth, magSq, x, y, dx, dy, escaped: iteration < maxIterations };
+                    }
+                    function iteratePerturb(x0, y0, centerX, centerY, referenceOrbit, maxIterations) {
+                        const deltaRe = x0 - centerX;
+                        const deltaIm = y0 - centerY;
+                        let wRe = 0;
+                        let wIm = 0;
+                        let zRe = 0;
+                        let zIm = 0;
+                        let iteration = 0;
+                        for (; iteration < maxIterations; iteration++) {
+                            const refRe = referenceOrbit[iteration * 2];
+                            const refIm = referenceOrbit[iteration * 2 + 1];
+                            zRe = refRe + wRe;
+                            zIm = refIm + wIm;
+                            const magSq = zRe * zRe + zIm * zIm;
+                            if (magSq > 4) {
+                                const smooth = iteration + 1 - Math.log2(Math.log2(Math.max(magSq, 1e-12)));
+                                return { iteration, smooth, magSq, x: zRe, y: zIm, dx: 0, dy: 0, escaped: true };
+                            }
+                            const tempRe = wRe;
+                            const tempIm = wIm;
+                            const wSqRe = tempRe * tempRe - tempIm * tempIm;
+                            const wSqIm = 2 * tempRe * tempIm;
+                            const refWRe = 2 * (refRe * tempRe - refIm * tempIm);
+                            const refWIm = 2 * (refRe * tempIm + refIm * tempRe);
+                            wRe = refWRe + wSqRe + deltaRe;
+                            wIm = refWIm + wSqIm + deltaIm;
+                        }
+                        return { iteration: maxIterations, smooth: maxIterations, magSq: 0, x: zRe, y: zIm, dx: 0, dy: 0, escaped: false };
+                    }
+                    function shade(result, maxIterations, scheme, rotation, frequency, saturation, smoothing, distanceEstimate) {
+                        if (!result.escaped) {
+                            return [0, 0, 0];
+                        }
+                        let t = result.smooth / maxIterations;
+                        t = Math.min(1, Math.max(0, t));
+                        t = Math.pow(t, smoothing);
+                        if (distanceEstimate && result.dx !== undefined && result.dy !== undefined) {
+                            const denom = Math.sqrt(result.dx * result.dx + result.dy * result.dy + 1e-18);
+                            if (denom > 0 && result.magSq > 0) {
+                                const dist = Math.sqrt(result.magSq) * Math.log(Math.max(result.magSq, 1e-12)) / denom;
+                                t = Math.min(1, Math.max(0, dist * 0.1));
+                            }
+                        }
+                        return getColor(t, scheme, rotation, frequency, saturation);
+                    }
+                    self.onmessage = function(e) {
+                        const {
+                            startY, endY, width, height,
+                            centerX, centerY, zoom,
+                            maxIterations, colorScheme, colorRotation,
+                            colorFrequency, saturation, smoothing,
+                            quality, juliaMode, juliaCReal, juliaCImag,
+                            distanceEstimate, perturbation, referenceOrbit
+                        } = e.data;
+                        const pixels = new Uint8ClampedArray((endY - startY) * width * 4);
+                        const aspect = width / height;
+                        const scaleX = 4.0 * zoom * aspect;
+                        const scaleY = 4.0 * zoom;
+                        const samples = Math.max(1, quality | 0);
+                        const grid = Math.ceil(Math.sqrt(samples));
+                        const usePerturbation = perturbation && referenceOrbit && referenceOrbit.length >= maxIterations * 2 && !juliaMode;
+                        for (let py = startY; py < endY; py++) {
+                            for (let px = 0; px < width; px++) {
+                                let rAcc = 0;
+                                let gAcc = 0;
+                                let bAcc = 0;
+                                let sampleCount = 0;
+                                for (let sy = 0; sy < grid; sy++) {
+                                    for (let sx = 0; sx < grid; sx++) {
+                                        if (sampleCount >= samples) {
+                                            break;
+                                        }
+                                        const offsetX = (sx + 0.5) / grid;
+                                        const offsetY = (sy + 0.5) / grid;
+                                        const x0 = centerX + ((px + offsetX) / width - 0.5) * scaleX;
+                                        const y0 = centerY + ((py + offsetY) / height - 0.5) * scaleY;
+                                        const result = usePerturbation
+                                            ? iteratePerturb(x0, y0, centerX, centerY, referenceOrbit, maxIterations)
+                                            : iterateStandard(x0, y0, juliaMode, juliaCReal, juliaCImag, maxIterations, distanceEstimate);
+                                        const color = shade(result, maxIterations, colorScheme, colorRotation, colorFrequency, saturation, smoothing, distanceEstimate);
+                                        rAcc += color[0];
+                                        gAcc += color[1];
+                                        bAcc += color[2];
+                                        sampleCount++;
+                                    }
+                                    if (sampleCount >= samples) {
+                                        break;
+                                    }
+                                }
+                                if (sampleCount === 0) {
+                                    sampleCount = 1;
+                                }
+                                const inv = 1 / sampleCount;
+                                const idx = ((py - startY) * width + px) * 4;
+                                pixels[idx] = rAcc * inv;
+                                pixels[idx + 1] = gAcc * inv;
+                                pixels[idx + 2] = bAcc * inv;
+                                pixels[idx + 3] = 255;
+                            }
+                        }
+                        self.postMessage({ startY, pixels }, [pixels.buffer]);
+                    };
+                    function getColor(t, scheme, rotation, frequency, saturation) {
+                        t = (t * frequency + rotation / 360) % 1;
+                        let r;
+                        let g;
+                        let b;
+                        switch (scheme) {
+                            case 'rainbow': {
+                                const h = t * 6;
+                                const xVal = 1 - Math.abs(h % 2 - 1);
+                                if (h < 1) { r = 1; g = xVal; b = 0; }
+                                else if (h < 2) { r = xVal; g = 1; b = 0; }
+                                else if (h < 3) { r = 0; g = 1; b = xVal; }
+                                else if (h < 4) { r = 0; g = xVal; b = 1; }
+                                else if (h < 5) { r = xVal; g = 0; b = 1; }
+                                else { r = 1; g = 0; b = xVal; }
+                                break;
+                            }
+                            case 'fire': {
+                                r = Math.sqrt(t);
+                                g = t * t * t;
+                                b = Math.sin(t * Math.PI);
+                                break;
+                            }
+                            case 'ocean': {
+                                r = 0;
+                                g = Math.sqrt(t);
+                                b = t;
+                                break;
+                            }
+                            case 'forest': {
+                                r = t * 0.3;
+                                g = Math.sqrt(t);
+                                b = t * 0.5;
+                                break;
+                            }
+                            case 'ultraviolet': {
+                                r = Math.sin(t * Math.PI) * 0.5 + 0.5;
+                                g = 0;
+                                b = t;
+                                break;
+                            }
+                            case 'psychedelic': {
+                                r = Math.sin(t * Math.PI * 3) * 0.5 + 0.5;
+                                g = Math.sin(t * Math.PI * 5 + 2) * 0.5 + 0.5;
+                                b = Math.sin(t * Math.PI * 7 + 4) * 0.5 + 0.5;
+                                break;
+                            }
+                            case 'aurora': {
+                                r = Math.sin(t * Math.PI * 2) * 0.3 + 0.3;
+                                g = Math.cos(t * Math.PI) * 0.5 + 0.5;
+                                b = Math.sin(t * Math.PI * 3) * 0.5 + 0.5;
+                                break;
+                            }
+                            case 'plasma': {
+                                r = Math.sin(t * Math.PI * 2);
+                                g = Math.sin(t * Math.PI * 2 + 2);
+                                b = Math.sin(t * Math.PI * 2 + 4);
+                                break;
+                            }
+                            case 'ice': {
+                                r = t * 0.7;
+                                g = t * 0.9;
+                                b = 1;
+                                break;
+                            }
+                            case 'sunset': {
+                                r = 1;
+                                g = Math.sqrt(t) * 0.6;
+                                b = t * t;
+                                break;
+                            }
+                            case 'cosmic': {
+                                r = Math.pow(t, 0.5);
+                                g = Math.pow(t, 1.5);
+                                b = Math.pow(Math.sin(t * Math.PI * 2), 2);
+                                break;
+                            }
+                            case 'neon': {
+                                r = Math.abs(Math.sin(t * Math.PI * 4));
+                                g = Math.abs(Math.sin(t * Math.PI * 6));
+                                b = Math.abs(Math.sin(t * Math.PI * 8));
+                                break;
+                            }
+                            default: {
+                                r = t;
+                                g = t;
+                                b = t;
+                                break;
+                            }
+                        }
+                        const gray = (r + g + b) / 3;
+                        r = gray + (r - gray) * saturation;
+                        g = gray + (g - gray) * saturation;
+                        b = gray + (b - gray) * saturation;
+                        return [
+                            Math.max(0, Math.min(255, r * 255)),
+                            Math.max(0, Math.min(255, g * 255)),
+                            Math.max(0, Math.min(255, b * 255))
+                        ];
+                    }
+                `;
+                
+                const blob = new Blob([workerCode], { type: 'application/javascript' });
+                const workerURL = URL.createObjectURL(blob);
+                
+                for (let i = 0; i < this.numWorkers; i++) {
+                    this.workers.push(new Worker(workerURL));
+                }
+            }
+            
+            handleMouseDown(e) {
+                this.isDragging = true;
+                this.lastX = e.clientX;
+                this.lastY = e.clientY;
+            }
+            
+            handleMouseMove(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const aspect = this.canvas.width / this.canvas.height;
+                const worldX = this.centerX.value + (x / this.canvas.width - 0.5) * 4.0 * this.zoom.value * aspect;
+                const worldY = this.centerY.value + (y / this.canvas.height - 0.5) * 4.0 * this.zoom.value;
+                
+                this.mousePosition = { x: worldX, y: worldY };
+                this.updateCoordinateDisplay();
+                
+                if (this.isDragging) {
+                    const dx = (e.clientX - this.lastX) / this.canvas.width * 4.0 * this.zoom.value * aspect;
+                    const dy = (e.clientY - this.lastY) / this.canvas.height * 4.0 * this.zoom.value;
+                    
+                    this.centerX = new BigDecimal(this.centerX.value - dx);
+                    this.centerY = new BigDecimal(this.centerY.value - dy);
+                    
+                    this.lastX = e.clientX;
+                    this.lastY = e.clientY;
+                    
+                    this.render();
+                }
+            }
+            
+            handleMouseUp(event) {
+                if (this.isDragging) {
+                    this.saveToHistory();
+                }
+                this.isDragging = false;
+                if (event && event.type === 'mouseleave') {
+                    this.mousePosition = null;
+                }
+                this.updateCoordinateDisplay();
+            }
+            
+            handleWheel(e) {
+                e.preventDefault();
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = (e.clientX - rect.left) / this.canvas.width - 0.5;
+                const mouseY = (e.clientY - rect.top) / this.canvas.height - 0.5;
+                
+                const aspect = this.canvas.width / this.canvas.height;
+                const worldMouseX = mouseX * 4.0 * this.zoom.value * aspect;
+                const worldMouseY = mouseY * 4.0 * this.zoom.value;
+                
+                const zoomFactor = e.deltaY < 0 ? 0.85 : 1.15;
+                const newZoom = this.zoom.value * zoomFactor;
+                
+                this.centerX = new BigDecimal(this.centerX.value + worldMouseX * (1 - zoomFactor));
+                this.centerY = new BigDecimal(this.centerY.value + worldMouseY * (1 - zoomFactor));
+                this.zoom = new BigDecimal(newZoom);
+                
+                this.maxIterations = Math.min(10000, Math.max(100, Math.floor(1000 + Math.log(1/this.zoom.value) * 50)));
+                document.getElementById('iterationsSlider').value = this.maxIterations;
+                document.getElementById('iterationsValue').textContent = this.maxIterations;
+                
+                this.render();
+                this.saveToHistory();
+            }
+            
+            handleDoubleClick(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = (e.clientX - rect.left) / this.canvas.width - 0.5;
+                const mouseY = (e.clientY - rect.top) / this.canvas.height - 0.5;
+                
+                const aspect = this.canvas.width / this.canvas.height;
+                this.centerX = new BigDecimal(this.centerX.value + mouseX * 4.0 * this.zoom.value * aspect);
+                this.centerY = new BigDecimal(this.centerY.value + mouseY * 4.0 * this.zoom.value);
+                this.zoom = new BigDecimal(this.zoom.value * 0.5);
+                
+                this.maxIterations = Math.min(10000, Math.max(100, Math.floor(1000 + Math.log(1/this.zoom.value) * 50)));
+                document.getElementById('iterationsSlider').value = this.maxIterations;
+                document.getElementById('iterationsValue').textContent = this.maxIterations;
+                
+                this.render();
+                this.saveToHistory();
+            }
+            
+            handleTouchStart(e) {
+                e.preventDefault();
+                if (e.touches.length === 1) {
+                    this.isDragging = true;
+                    this.lastX = e.touches[0].clientX;
+                    this.lastY = e.touches[0].clientY;
+                }
+            }
+            
+            handleTouchMove(e) {
+                e.preventDefault();
+                if (this.isDragging && e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const aspect = this.canvas.width / this.canvas.height;
+                    const dx = (touch.clientX - this.lastX) / this.canvas.width * 4.0 * this.zoom.value * aspect;
+                    const dy = (touch.clientY - this.lastY) / this.canvas.height * 4.0 * this.zoom.value;
+                    
+                    this.centerX = new BigDecimal(this.centerX.value - dx);
+                    this.centerY = new BigDecimal(this.centerY.value - dy);
+                    
+                    this.lastX = touch.clientX;
+                    this.lastY = touch.clientY;
+                    
+                    this.mousePosition = null;
+                    this.render();
+                    this.updateCoordinateDisplay();
+                }
+            }
+            
+            handleTouchEnd() {
+                if (this.isDragging) {
+                    this.saveToHistory();
+                }
+                this.isDragging = false;
+            }
+            
+            async render() {
+                const startTime = Date.now();
+                const loader = document.getElementById('loading');
+                if (loader) {
+                    loader.style.display = 'block';
+                }
+                
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                const rowsPerWorker = Math.ceil(height / this.numWorkers);
+                const usePerturbation = this.usePerturbation && !this.juliaMode;
+                let referenceOrbit = null;
+                
+                if (usePerturbation) {
+                    referenceOrbit = new Float64Array(this.maxIterations * 2);
+                    let zx = 0;
+                    let zy = 0;
+                    const cx = this.centerX.value;
+                    const cy = this.centerY.value;
+                    for (let iter = 0; iter < this.maxIterations; iter++) {
+                        referenceOrbit[iter * 2] = zx;
+                        referenceOrbit[iter * 2 + 1] = zy;
+                        const nextX = zx * zx - zy * zy + cx;
+                        zy = 2 * zx * zy + cy;
+                        zx = nextX;
+                    }
+                }
+                
+                const promises = [];
+                
+                try {
+                    for (let i = 0; i < this.numWorkers; i++) {
+                        const startY = i * rowsPerWorker;
+                        const endY = Math.min((i + 1) * rowsPerWorker, height);
+                        
+                        if (startY >= height) break;
+                        
+                        const promise = new Promise((resolve) => {
+                            this.workers[i].onmessage = (e) => {
+                                resolve(e.data);
+                            };
+                            
+                            this.workers[i].postMessage({
+                                startY,
+                                endY,
+                                width,
+                                height,
+                                centerX: this.centerX.value,
+                                centerY: this.centerY.value,
+                                zoom: this.zoom.value,
+                                maxIterations: this.maxIterations,
+                                colorScheme: this.colorScheme,
+                                colorRotation: this.colorRotation,
+                                colorFrequency: this.colorFrequency,
+                                saturation: this.saturation,
+                                smoothing: this.smoothing,
+                                quality: this.quality,
+                                juliaMode: this.juliaMode,
+                                juliaCReal: this.juliaCReal,
+                                juliaCImag: this.juliaCImag,
+                                distanceEstimate: this.distanceEstimate,
+                                perturbation: usePerturbation,
+                                referenceOrbit: referenceOrbit
+                            });
+                        });
+                        
+                        promises.push(promise);
+                    }
+                    
+                    const results = await Promise.all(promises);
+                    
+                    for (const result of results) {
+                        const { startY, pixels } = result;
+                        const offset = startY * width * 4;
+                        this.imageData.data.set(pixels, offset);
+                    }
+                    
+                    this.ctx.putImageData(this.imageData, 0, 0);
+                    
+                    const renderTime = Date.now() - startTime;
+                    document.getElementById('renderTimeDisplay').textContent = renderTime + 'ms';
+                    
+                    this.updateInfo();
+                } finally {
+                    if (loader) {
+                        loader.style.display = 'none';
+                    }
+                }
+            }
+            
+            updateInfo() {
+                const zoomLevel = 1 / this.zoom.value;
+                let zoomDisplay;
+                if (zoomLevel < 1e6) {
+                    zoomDisplay = zoomLevel.toFixed(2) + 'x';
+                } else {
+                    zoomDisplay = zoomLevel.toExponential(2) + 'x';
+                }
+                document.getElementById('zoomDisplay').textContent = zoomDisplay;
+                document.getElementById('iterDisplay').textContent = this.maxIterations;
+                
+                let precisionLabel = 'float64';
+                if (this.usePerturbation && !this.juliaMode) {
+                    precisionLabel = 'perturbation assist';
+                } else if (this.quality > 1) {
+                    precisionLabel = 'supersampled';
+                }
+                document.getElementById('precisionDisplay').textContent = precisionLabel;
+                
+                this.updateCoordinateDisplay();
+            }
+            
+            formatNumber(value, digits) {
+                if (!isFinite(value)) {
+                    return value.toString();
+                }
+                const clamped = Math.min(12, Math.max(2, digits));
+                const absVal = Math.abs(value);
+                const threshold = Math.pow(10, -clamped + 2);
+                if (absVal !== 0 && (absVal >= 1e4 || absVal < threshold)) {
+                    return value.toExponential(Math.max(0, clamped - 2));
+                }
+                return value.toFixed(clamped);
+            }
+            
+            updateCoordinateDisplay() {
+                const coordsEl = document.getElementById('coordsDisplay');
+                if (!coordsEl) return;
+                
+                const safeZoom = Math.max(this.zoom.value, 1e-12);
+                const digits = Math.min(12, Math.max(4, Math.floor(-Math.log10(safeZoom)) + 4));
+                const centerText = `Center: (${this.formatNumber(this.centerX.value, digits)}, ${this.formatNumber(this.centerY.value, digits)})`;
+                
+                if (this.mousePosition) {
+                    const mouseText = ` | Mouse: (${this.formatNumber(this.mousePosition.x, digits)}, ${this.formatNumber(this.mousePosition.y, digits)})`;
+                    coordsEl.textContent = centerText + mouseText;
+                } else {
+                    coordsEl.textContent = centerText;
+                }
+            }
+            
+            animate() {
+                if (this.autoExplore) {
+                    this.autoExploreAngle += 0.02;
+                    const spiralZoom = 0.99;
+                    this.zoom = new BigDecimal(this.zoom.value * spiralZoom);
+                    
+                    const drift = this.zoom.value * 0.1;
+                    this.centerX = new BigDecimal(this.centerX.value + Math.cos(this.autoExploreAngle) * drift);
+                    this.centerY = new BigDecimal(this.centerY.value + Math.sin(this.autoExploreAngle) * drift);
+                    
+                    this.maxIterations = Math.min(10000, Math.max(100, Math.floor(1000 + Math.log(1/this.zoom.value) * 50)));
+                    
+                    this.render();
+                }
+                
+                if (this.autoColor) {
+                    this.colorRotation = (this.colorRotation + 2) % 360;
+                    document.getElementById('colorRotation').value = this.colorRotation;
+                    document.getElementById('colorRotationValue').textContent = this.colorRotation;
+                    this.render();
+                }
+                
+                this.frameCount++;
+                const now = Date.now();
+                if (now - this.lastFrameTime >= 1000) {
+                    this.fps = this.frameCount;
+                    this.frameCount = 0;
+                    this.lastFrameTime = now;
+                    document.getElementById('fpsDisplay').textContent = this.fps;
+                }
+                
+                requestAnimationFrame(() => this.animate());
+            }
+            
+            reset() {
+                this.centerX = new BigDecimal(-0.5);
+                this.centerY = new BigDecimal(0.0);
+                this.zoom = new BigDecimal(0.3);
+                this.maxIterations = 1000;
+                this.colorRotation = 0;
+                document.getElementById('iterationsSlider').value = 1000;
+                document.getElementById('iterationsValue').textContent = 1000;
+                document.getElementById('colorRotation').value = 0;
+                document.getElementById('colorRotationValue').textContent = 0;
+                this.render();
+                this.saveToHistory();
+            }
+            
+            setIterations(value) {
+                this.maxIterations = parseInt(value);
+                document.getElementById('iterationsValue').textContent = this.maxIterations;
+                this.render();
+            }
+            
+            setQuality(value) {
+                this.quality = parseInt(value);
+                document.getElementById('qualityValue').textContent = value;
+                this.render();
+            }
+            
+            setSmoothing(value) {
+                const sliderValue = parseFloat(value);
+                this.smoothing = Math.max(0.05, sliderValue / 50);
+                document.getElementById('smoothingValue').textContent = value;
+                this.render();
+            }
+            
+            setColorScheme(scheme) {
+                this.colorScheme = scheme;
+                this.render();
+            }
+            
+            setColorRotation(value) {
+                this.colorRotation = parseFloat(value);
+                document.getElementById('colorRotationValue').textContent = value;
+                this.render();
+            }
+            
+            setColorFrequency(value) {
+                this.colorFrequency = parseFloat(value);
+                document.getElementById('colorFreqValue').textContent = parseFloat(value).toFixed(1);
+                this.render();
+            }
+            
+            setSaturation(value) {
+                this.saturation = parseFloat(value) / 100;
+                document.getElementById('saturationValue').textContent = value;
+                this.render();
+            }
+            
+            toggleJuliaMode() {
+                this.juliaMode = document.getElementById('juliaMode').checked;
+                if (this.juliaMode && this.usePerturbation) {
+                    this.usePerturbation = false;
+                    const perturbationCheckbox = document.getElementById('perturbation');
+                    if (perturbationCheckbox) {
+                        perturbationCheckbox.checked = false;
+                    }
+                }
+                this.render();
+            }
+            
+            setJuliaC() {
+                this.juliaCReal = parseFloat(document.getElementById('juliaCReal').value) || 0;
+                this.juliaCImag = parseFloat(document.getElementById('juliaCImag').value) || 0;
+                if (this.juliaMode) {
+                    this.render();
+                }
+            }
+            
+            togglePerturbation() {
+                const checkbox = document.getElementById('perturbation');
+                if (this.juliaMode && checkbox.checked) {
+                    checkbox.checked = false;
+                    this.usePerturbation = false;
+                    console.warn('Perturbation assist is only available in Mandelbrot mode.');
+                    return;
+                }
+                this.usePerturbation = checkbox.checked;
+                this.render();
+            }
+            
+            toggleDistanceEstimate() {
+                this.distanceEstimate = document.getElementById('distanceEstimate').checked;
+                this.render();
+            }
+            
+            toggleAutoExplore() {
+                this.autoExplore = !this.autoExplore;
+                const btn = document.getElementById('autoExploreBtn');
+                if (this.autoExplore) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            }
+            
+            toggleAutoColor() {
+                this.autoColor = !this.autoColor;
+                const btn = document.getElementById('autoColorBtn');
+                if (this.autoColor) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            }
+            
+            gotoPreset(name) {
+                const presets = {
+                    seahorse: { x: -0.743643887037151, y: 0.13182590420533, z: 0.00001 },
+                    elephant: { x: 0.3245046418497685, y: 0.04855101129280834, z: 0.00005 },
+                    spiral: { x: -0.7746806106269039, y: -0.1374168856037867, z: 0.00001 },
+                    minibrot: { x: -0.7435669, y: 0.1314023, z: 0.0001 },
+                    scepter: { x: -1.25066, y: 0.02012, z: 0.001 },
+                    tendril: { x: -0.7269, y: 0.1889, z: 0.0001 },
+                    cathedral: { x: -0.235125, y: 0.827215, z: 0.00005 },
+                    galaxy: { x: -0.7453, y: 0.1127, z: 0.00002 }
+                };
+                
+                if (presets[name]) {
+                    this.centerX = new BigDecimal(presets[name].x);
+                    this.centerY = new BigDecimal(presets[name].y);
+                    this.zoom = new BigDecimal(presets[name].z);
+                    this.maxIterations = Math.min(10000, Math.max(1000, Math.floor(1000 + Math.log(1/this.zoom.value) * 50)));
+                    document.getElementById('iterationsSlider').value = this.maxIterations;
+                    document.getElementById('iterationsValue').textContent = this.maxIterations;
+                    this.render();
+                    this.saveToHistory();
+                }
+            }
+            
+            saveToHistory() {
+                const item = {
+                    x: this.centerX.value,
+                    y: this.centerY.value,
+                    z: this.zoom.value,
+                    time: new Date().toLocaleTimeString()
+                };
+                
+                this.history.unshift(item);
+                if (this.history.length > this.maxHistory) {
+                    this.history.pop();
+                }
+                
+                this.updateHistoryUI();
+            }
+            
+            updateHistoryUI() {
+                const list = document.getElementById('historyList');
+                list.innerHTML = '';
+                
+                this.history.forEach((item, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.textContent = `${item.time} - Zoom: ${(1/item.z).toExponential(2)}`;
+                    div.onclick = () => {
+                        this.centerX = new BigDecimal(item.x);
+                        this.centerY = new BigDecimal(item.y);
+                        this.zoom = new BigDecimal(item.z);
+                        this.render();
+                    };
+                    list.appendChild(div);
+                });
+            }
+            
+            clearHistory() {
+                this.history = [];
+                this.updateHistoryUI();
+            }
+            
+            exportImage() {
+                const scale = 4;
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = this.canvas.width * scale;
+                tempCanvas.height = this.canvas.height * scale;
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                tempCtx.imageSmoothingEnabled = false;
+                tempCtx.drawImage(this.canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+                
+                const link = document.createElement('a');
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                link.download = `mandelbrot-4k-${timestamp}.png`;
+                link.href = tempCanvas.toDataURL('image/png');
+                link.click();
+            }
+            
+            exportVideo() {
+                alert('Video recording feature coming soon! For now, use screen recording software to capture your exploration.');
+            }
+        }
+        const state = new MandelbrotState();
+        
+        console.log('🚀 Infinite Mandelbrot Explorer ready!');
+        console.log('Highlights:');
+        console.log('  - Deep zoom with perturbation assist');
+        console.log('  - Multi-threaded supersampled rendering');
+        console.log('  - 12 curated color universes');
+        console.log('  - Switchable Mandelbrot / Julia sets');
+        console.log('  - Distance estimation shading');
+        console.log('  - Auto-explore spiral mode');
+        console.log('  - Session history + quick restore');
+        console.log('  - One-click 4K export');
+        console.log('Controls:');
+        console.log('  - Mouse wheel: Zoom');
+        console.log('  - Drag: Pan');
+        console.log('  - Double-click: Zoom to point');
+    </script>
+</body>
+</html>
