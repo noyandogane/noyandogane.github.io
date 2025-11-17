@@ -12,6 +12,7 @@
 
 [Mandelbrot](https://noyandogane.github.io/mandelbrot.html)
 
+[Mandelbrot Infinite Explorer](https://noyandogane.github.io/mandelbrot-infinite.html)
 
 
 
